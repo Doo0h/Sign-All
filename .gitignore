@@ -31,3 +31,9 @@ uploads/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local backend reference DB and temporary state
+backend/var/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
