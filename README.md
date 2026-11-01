@@ -28,7 +28,9 @@
 | data/ | 원본·정제본 관리 지침 |
 | [docs/api-draft.md](docs/api-draft.md) | 내부 API 요청·응답 설계 제안 |
 | [docs/data-plan.md](docs/data-plan.md) | 출처·원본 항목·저장 방식·미확인 사항 |
-| [docs/week-03.md](docs/week-03.md) | 3주차 체크리스트와 8회 진행 방향 |
+| [docs/week-03.md](docs/week-03.md) | 3주차 체크리스트와 4주차 구현·8회 진행 방향 |
+| [docs/security-design.md](docs/security-design.md) | 입력·호출 제한·키·세션 보호 설계 제안 |
+| [docs/decisions.md](docs/decisions.md) | 현재 상태·팀 합의 후보·보류 사항 |
 
 ## 시작하기
 
@@ -36,6 +38,8 @@
 git clone https://github.com/Doo0h/Sign-All.git
 cd Sign-All
 ```
+
+3주차 문서에는 API 계약·오류 처리·데이터 논리 구조·저장 대안·보안 고려사항을 제안으로 정리했습니다. 팀 합의와 구현·검증은 별도입니다.
 
 기술 스택은 아직 정하지 않았으므로 설치·실행 명령은 결정 후 추가합니다. 먼저 설계 문서의 미결정 사항을 팀과 검토합니다.
 
