@@ -1,0 +1,16 @@
+body { font-family: system-ui, "Malgun Gothic", sans-serif; max-width: 760px; margin: 0 auto; padding: 16px; line-height: 1.6; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 8px; top: 8px; background: #fff; padding: 4px 8px; }
+.banner { background: #fff3bf; border: 2px solid #f08c00; padding: 8px 12px; position: sticky; top: 0; font-weight: bold; }
+h2:focus { outline: 3px solid #1c7ed6; }
+:focus-visible { outline: 3px solid #1c7ed6; outline-offset: 2px; }
+button { font-size: 1rem; padding: 8px 14px; margin: 4px 4px 4px 0; cursor: pointer; }
+select, textarea { font-size: 1rem; width: 100%; padding: 8px; box-sizing: border-box; }
+textarea { min-height: 160px; }
+label { display: block; margin-top: 12px; font-weight: bold; }
+#error { color: #c92a2a; font-weight: bold; }
+.note { background: #f1f3f5; padding: 8px 12px; border-left: 4px solid #868e96; }
+.dummy { background: #ffe3e3; border: 1px dashed #c92a2a; padding: 8px 12px; }
+section { border-top: 1px solid #ced4da; margin-top: 16px; padding-top: 8px; }
+ul.q { list-style: none; padding: 0; }
+ul.q li { border: 1px solid #ced4da; padding: 8px 12px; margin: 8px 0; }
