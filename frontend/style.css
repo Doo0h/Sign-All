@@ -41,3 +41,11 @@ input[type=search]{width:100%;padding:13px 16px;border:1px solid #cbd8ce;border-
 .sign-card-result li+li{margin-top:12px}
 .sign-card-result a{display:block;margin-top:6px;font-weight:600;text-underline-offset:3px}
 .sign-disclaimer{font-size:11px;color:var(--muted);margin:16px 0 0}
+
+/* Use the whole viewport; retain only readable inner gutters. */
+.workspace{width:100%;max-width:none;margin:0}
+@media(min-width:721px){
+  .topbar{padding-inline:24px}
+  .sidebar{padding-inline:24px}
+  .content{padding-inline:clamp(20px,2vw,40px)}
+}
