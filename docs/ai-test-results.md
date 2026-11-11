@@ -1,4 +1,5 @@
 # Sign-All 4주차 AI 프롬프트 적용·시험 기록
+> 5주차 갱신(2026-11-11): Node v24.22.2에서 `node --test test/ai-prompts.test.js test/local-ai.test.js` 9/9 통과. 아래 미실행 기록은 4주차 당시 이력이다. 실제 모델 시험은 여전히 미실행이며 [로컬 AI 안내](local-ai-setup.md)를 따른다.
 작성: 2026-11-10 | 작업 대상: 원격 `ai` | 담당: 황건수
 
 ## 1. 작업 환경과 브랜치 보존

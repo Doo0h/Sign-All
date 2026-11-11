@@ -26,6 +26,8 @@ export function config(env = process.env) {
   };
   const mode = env.APP_MODE || 'demo';
   if (!['demo', 'live'].includes(mode)) throw new Error('APP_MODE must be demo or live');
+  const aiProvider = env.AI_PROVIDER || 'external';
+  if (!['external','ollama'].includes(aiProvider)) throw new Error('AI_PROVIDER must be external or ollama');
   return {
     mode, host: env.HOST || '127.0.0.1', port: num('PORT', 3001, 0, 65535),
     dbPath: env.DB_PATH || './var/signall.sqlite',
@@ -37,6 +39,6 @@ export function config(env = process.env) {
     concurrency: num('MAX_AI_CONCURRENT', 2, 1, 20),
     aiBudget: num('MAX_AI_CALLS_PER_HOUR', 100, 1, 100000),
     aiTimeout: num('AI_TIMEOUT_MS', 20000, 100, 120000),
-    aiUrl: env.AI_API_URL, aiKey: env.AI_API_KEY, aiModel: env.AI_MODEL
+    aiProvider, aiUrl: env.AI_API_URL, aiKey: env.AI_API_KEY, aiModel: env.AI_MODEL
   };
 }
