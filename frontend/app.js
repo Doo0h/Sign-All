@@ -292,32 +292,31 @@ function S3() {
 function S4() {
   const q = st.questions[st.current];
   const qid = q.questionId;
-  const signBox = h('div', { 'aria-live': 'polite' });
   const fbBox = h('section', { 'aria-live': 'polite' });
   const ta = h('textarea', { id: 'answer', maxLength: 5000, value: st.answers[qid] ?? '', placeholder: '상황 → 내가 한 행동 → 결과 순서로 경험을 적어 보세요.' });
   const count = h('p', { className: 'counter' }, `${ta.value.length} / 5000자`);
   ta.addEventListener('input', () => { st.answers[qid] = ta.value; delete st.feedbacks[qid]; fbBox.replaceChildren(); count.textContent = `${ta.value.length} / 5000자`; });
 
   const showSign = (kw) => {
-    const box = h('div', { id: 'sign-' + kw });
+    const box = h('div', { id: 'sign-' + kw, className:'sign-card-result', 'aria-live':'polite' });
     const r = st.signs[kw];
     if (r === 'error') box.append(h('p', {}, '수어 자료를 불러오지 못했습니다. 답변 연습은 계속할 수 있습니다.'));
     else if (r && !r.items.length) box.append(h('p', {}, `'${kw}'에 해당하는 수어 자료를 찾지 못했습니다. 답변 연습은 계속할 수 있습니다.`));
     else if (r) {
       box.append(h('p', { className: 'note' }, '참고용 후보 자료입니다. 질문 속 의미와 다를 수 있습니다.'),
         h('ul', {}, r.items.map((s) => h('li', {}, `${s.term}${s.meaning ? ' — ' + s.meaning : ''} `,
-          s.sourcePageUrl?.startsWith('https://') ? h('a', { href: s.sourcePageUrl, target: '_blank', rel: 'noopener' }, '출처') : null,
+          s.sourcePageUrl?.startsWith('https://') ? h('a', { href: s.sourcePageUrl, target: '_blank', rel: 'noopener' }, '사전 원문 열기 ↗') : null,
           // 영상 주소가 응답에 있을 때만 재생 영역 생성 (자동재생 없음)
           s.videoUrl?.startsWith('https://') ? h('video', { src: s.videoUrl, controls: true, width: 320 }) : null))));
     }
     return box;
   };
   const kwBtns = [...new Set([...(q.keywords || []),'경험','문제','해결','도움','질문'])].map((kw) => {
-    const b = h('button', { onclick: () => run(b, `'${kw}' 수어 자료를 찾고 있습니다.`, async () => {
+    const b = h('button', { className:'sign-card-button', 'aria-label':`'${kw}' 수어 자료 보기`, onclick: () => run(b, `'${kw}' 수어 자료를 찾고 있습니다.`, async () => {
       try { st.signs[kw] = await api('/api/signs?keyword=' + encodeURIComponent(kw)); } catch { st.signs[kw] = 'error'; }
       if (b.isConnected && st.screen === 'S4') b.nextElementSibling.replaceWith(showSign(kw));
-    }) }, `'${kw}' 수어 자료 보기`);
-    return [b, showSign(kw)];
+    }) }, h('span',{className:'sign-card-kind'},(q.keywords||[]).includes(kw)?'질문 핵심어':'일반 참고어'),h('strong',{},kw),h('span',{className:'sign-card-action'},'수어 자료 보기 →'));
+    return h('article',{className:'sign-card'},b,showSign(kw));
   });
 
   const showFeedback = () => {
@@ -344,7 +343,7 @@ function S4() {
     title('질문 연습'),
     h('p', {}, `${st.current + 1} / ${st.questions.length}`),
     h('p', { className: 'question-text' }, h('strong', {}, q.text)),
-    h('section', {className:'sign-panel'}, h('h3', {}, '단어 이해를 돕는 수어 사전'),h('p',{className:'note'},'질문 키워드와 일반 참고어입니다. 원문 사전에서 확인하세요. 질문 전체 번역이나 문맥 의미의 검증 결과가 아닙니다.'), kwBtns.length ? kwBtns.flat() : h('p', {}, '이 질문에는 조회할 키워드가 없습니다.'), signBox),
+    h('section', {className:'sign-panel'}, h('h3', {}, '단어 이해를 돕는 수어 사전'),h('p',{className:'sign-intro'},'궁금한 단어를 선택하면 사전 참고 자료를 확인할 수 있어요.'),h('div',{className:'sign-card-grid'},kwBtns),h('p',{className:'sign-disclaimer'},'질문 전체 번역이 아닌 단어별 참고 자료입니다. 질문 속 의미와 맞는지 원문에서 확인하세요.')),
     h('section', {}, h('label', { htmlFor: 'answer' }, '내 답변'), ta, count, fb),
     fbBox,
     h('button', { onclick: () => go('S3') }, '질문 목록으로'),
