@@ -88,6 +88,14 @@ export function createApp(options={}) {
         const list=repo.list(kind);if(!list.length)fail(503,'REFERENCE_DATA_UNAVAILABLE','참고자료가 아직 준비되지 않았습니다.');
         const matches=list.filter(r=>[r.name,r.region,r.industry].some(v=>typeof v==='string'&&v.toLowerCase().includes(q.toLowerCase())));
         result={items:matches.slice(offset,offset+limit),total:matches.length,limit,offset};
+      } else if(req.method==='GET' && path==='/api/signs/catalog'){
+          for(const k of url.searchParams.keys())if(!['q','offset'].includes(k))fail(400,'INVALID_INPUT','허용되지 않는 검색 조건입니다.',k);
+          const q=(url.searchParams.get('q')||'').trim().normalize('NFC');
+          const rawOffset=url.searchParams.get('offset')||'0';
+          if(q.length>100 || !/^\d{1,6}$/.test(rawOffset))fail(400,'INVALID_INPUT','검색 조건을 확인해 주세요.');
+          const offset=Number(rawOffset),limit=12;
+          const matches=repo.list('signs').filter(r=>[r.term,...r.keywords].some(v=>v.normalize('NFC').includes(q)));
+          result={items:matches.slice(offset,offset+limit),total:matches.length,offset,limit,notice:'사전 원문 참고 자료입니다. 면접 문맥에 맞는 수어인지 별도 확인이 필요합니다.'};
       } else if(req.method==='GET' && path==='/api/signs'){
         for(const k of url.searchParams.keys())if(k!=='keyword')fail(400,'INVALID_INPUT','허용되지 않은 검색 조건입니다.',k);
         const keyword=text(url.searchParams.get('keyword'),'keyword',100);
