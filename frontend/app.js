@@ -1,12 +1,13 @@
 // Sign-All 프론트엔드 (프레임워크 없는 단일 파일). 화면 흐름: docs/screen-flow.md
-const BASE = 'http://127.0.0.1:3001';
+const BASE = ''; // 개발·Docker·서버 모두 같은 출처의 /api 프록시를 사용한다.
+let serverInfo = null;
 const STEPS = { S0: '시작', S1: '기업·직무 선택', S2: '자기소개서', S3: '질문 목록', S4: '질문 연습', S5: '종료' };
 
 // 토큰은 메모리(이 객체)에만 둔다. URL·storage·콘솔에 남기지 않는다.
 const fresh = () => ({
   screen: 'S0', token: null, isDemo: false, companies: [], jobs: [],
   companyId: '', jobId: '', resumeText: '', analysis: null,
-  questions: [], answers: {}, feedbacks: {}, signs: {}, current: 0,
+  questions: [], answers: {}, feedbacks: {}, signs: {}, current: 0, aiConsent: false, uploadName: '',
 });
 let st = fresh();
 let busy = false;
@@ -27,17 +28,18 @@ const fail = (msg = '') => { $('error').textContent = msg; };
 
 class ApiError extends Error { constructor(m, status) { super(m); this.status = status; } }
 
-async function api(path, body) {
+async function api(path, body, file) {
   let res;
   try {
     res = await fetch(BASE + path, {
       method: body === undefined ? 'GET' : 'POST',
       signal: AbortSignal.timeout(130000),
       headers: {
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(body === undefined ? {} : { 'Content-Type': file ? 'application/octet-stream' : 'application/json' }),
+        ...(file ? { 'X-File-Name': encodeURIComponent(file.name) } : {}),
         ...(st.token ? { 'X-Session-Token': st.token } : {}),
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: file || JSON.stringify(body) }),
     });
   } catch {
     throw new ApiError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.', 0);
@@ -56,7 +58,7 @@ async function api(path, body) {
 async function run(btn, loading, fn) {
   if (btn.disabled || busy) return;
   busy = true;
-  const locked = [...document.querySelectorAll('#main button, #main textarea, #main select')].map(el => [el, el.disabled]);
+  const locked = [...document.querySelectorAll('#main button, #main textarea, #main select, #main input')].map(el => [el, el.disabled]);
   locked.forEach(([el]) => { el.disabled = true; });
   btn.disabled = true; fail(); say(loading);
   $('main').setAttribute('aria-busy', 'true');
@@ -74,7 +76,7 @@ function render() {
   main.dataset.screen = st.screen;
   const idx = Object.keys(STEPS).indexOf(st.screen);
   $('step').textContent = idx >= 0 ? `${idx + 1} / 6 단계 · ${STEPS[st.screen]}` : '';
-  const stages = ['시작 안내', '기업·직무', '자기소개서', '질문·답변', '연습 완료'];
+  const stages = ['연습 안내', '관심 기업 선택', '지원서 준비', '면접 연습', '연습 완료'];
   const current = ({ S0: 0, S1: 1, S2: 2, S3: 3, S4: 3, S5: 4 })[st.screen];
   $('step').textContent = current == null ? '연습 다시 시작' : `${current + 1} / 5 단계`;
   $('progress').replaceChildren(...stages.map((label, i) =>
@@ -89,6 +91,7 @@ const title = (t) => h('h2', { tabIndex: -1 }, t);
 // ---------- S0 시작
 function S0() {
   const btn = h('button', { onclick: () => run(btn, '시작하는 중…', async () => {
+    serverInfo=await api('/api/health');
     if (!st.token) {
       const s = await api('/api/session', {});
       st.token = s.sessionToken;
@@ -102,22 +105,26 @@ function S0() {
     h('span', { className: 'feature-no' }, n), h('h3', {}, heading), h('p', {}, body));
   return [
     h('div', { className: 'hero' },
-      h('p', { className: 'eyebrow' }, 'READY AT YOUR OWN PACE'),
-      title('당신의 경험이, 더 잘 전해지도록.'),
-      h('p', { className: 'lead' }, '자기소개서에서 시작해 나만의 답변까지. 글로 읽고, 천천히 생각하고, 편안하게 면접을 연습하세요.'),
-      btn, h('p', { className: 'hero-caption' }, '회원가입 없이 · 텍스트로 답변 · 나의 속도에 맞춰'),
-      h('div', { className: 'hero-mark', 'aria-hidden': 'true' }, '↗')),
+      h('p', { className: 'eyebrow' }, 'YOUR NEXT CHAPTER'),
+      title('다음 기회는,\n당신의 이야기에서.'),
+      h('p', { className: 'lead' }, '관심 기업을 살펴보고, 지원서를 준비하고, 나만의 답변을 연습하세요. 모든 과정을 읽고 쓰며, 나의 속도로.'),
+      btn, h('p', { className: 'hero-caption' }, '면접 연습 전용 · 실제 입사지원 접수 없음'),
+      h('div', { className: 'application-preview', 'aria-hidden': 'true' },
+        h('div', {className:'preview-top'}, h('span',{},'MY APPLICATION'), h('span',{className:'preview-dot'},'작성 중')),
+        h('div',{className:'preview-avatar'},'나'),h('h3',{},'경험을 강점으로'),h('p',{},'작은 경험도 나만의 이야기가 됩니다.'),
+        h('div',{className:'preview-line'}),h('div',{className:'preview-line short'}),h('div',{className:'preview-tags'},'경험 정리  ·  질문 연습'),
+        h('div',{className:'preview-check'},'✓  준비하는 만큼, 한 걸음 더'))),
     h('div', { className: 'feature-grid' },
-      feature('01', '경험에서 찾는 강점', '자기소개서를 정리하고 핵심 키워드와 역량을 확인해요.'),
+      feature('01', '관심 기업부터 탐색', '공식 기업 정보를 확인하고 연습할 직무를 선택해요.'),
       feature('02', '한 질문씩 차근차근', '기업·직무를 선택하고 관련 질문에 글로 답해요.'),
-      feature('03', '답변을 더 구체적으로', '잘한 점과 보완할 점을 읽고 다음 연습을 준비해요.')),
+      feature('03', '나의 문서로 시작', 'PDF·HWP·HWPX·DOCX·TXT에서 글을 불러와 직접 확인해요.')),
     h('p', { className: 'privacy-note' }, '입력한 자기소개서와 답변은 서버에 영구 저장되지 않으며, 연습 종료 시 화면에서 지워집니다. 이름·연락처 등 개인정보는 제외해 주세요. 수어 자료는 질문의 핵심 단어를 이해하기 위한 참고 자료입니다.'),
   ];
 }
 
 async function loadLists() {
   say('기업과 직무 목록을 불러오고 있습니다.');
-  const [c, j] = await Promise.all([api('/api/companies'), api('/api/jobs')]);
+  const [c, j] = await Promise.all([api('/api/companies?limit=100'), api('/api/jobs?limit=100')]);
   st.companies = c.items; st.jobs = j.items;
 }
 
@@ -135,16 +142,32 @@ function S1() {
     if (!confirmReset()) { e.target.value = st[key]; return; }
     st[key] = e.target.value; resetQuestions(); sync();
   };
+  const companySelect=h('select', { id: 'company', onchange: e=>{pick('companyId')(e);drawCards();} }, opts(st.companies, st.companyId));
+  const cards=h('div',{className:'company-grid'});
+  const search=h('input',{id:'company-search',type:'search',placeholder:'기업명 또는 산업 검색',oninput:()=>drawCards()});
+  function drawCards(){
+    const query=search.value.trim().toLowerCase();
+    const filtered=st.companies.filter(c=>(c.name+' '+(c.industry||'')).toLowerCase().includes(query));
+    cards.replaceChildren(...filtered.map(c=>h('article',{className:'company-card'+(c.id===st.companyId?' selected':'')},
+      h('div',{className:'company-top'},h('span',{className:'company-monogram '+(c.accent||'')},c.name.slice(0,1)),h('span',{className:'tag'},'기업 탐색')),
+      h('h3',{},c.name),h('p',{className:'industry'},c.industry||'연습용 기업'),h('p',{},c.summary||'시연을 위한 가상 기업입니다.'),
+      h('div',{className:'company-meta'},c.checkedAt?'출처 확인 '+c.checkedAt:'시연 데이터'),
+      c.sourcePageUrl?.startsWith('https://')?h('a',{href:c.sourcePageUrl,target:'_blank',rel:'noopener noreferrer'},'공식 소개 ↗'):null,
+      h('button',{className:c.id===st.companyId?'primary':'', 'aria-pressed':String(c.id===st.companyId),onclick:()=>{companySelect.value=c.id;companySelect.dispatchEvent(new Event('change'));}},c.id===st.companyId?'선택됨 ✓':'이 기업으로 연습'))));
+    if(!filtered.length)cards.append(h('p',{},'검색 결과가 없습니다. 다른 검색어를 입력해 주세요.'));
+  }
+  drawCards();
   return [
-    title('어떤 면접을 준비하고 있나요?'),
-    h('p', { className: 'lead' }, '연습할 기업과 직무를 선택해 주세요. 선택한 자료를 바탕으로 질문을 준비합니다.'),
+    h('p',{className:'eyebrow'},'EXPLORE COMPANIES'),title('어떤 미래를 준비하고 있나요?'),
+    h('p', { className: 'lead' }, '관심 기업을 선택하고 내 경험을 연결해 보세요. 아래 직무는 일반 면접 연습용이며 현재 채용 공고가 아닙니다.'),
+    h('label',{htmlFor:'company-search'},'기업 찾기'),search,cards,
     st.companies.length ? null : h('p', {}, '불러올 수 있는 기업 정보가 없습니다.'),
     st.jobs.length ? null : h('p', {}, '불러올 수 있는 직무 정보가 없습니다.'),
     h('label', { htmlFor: 'company' }, '기업'),
-    h('select', { id: 'company', onchange: pick('companyId') }, opts(st.companies, st.companyId)),
+    companySelect,
     h('label', { htmlFor: 'job' }, '직무'),
     h('select', { id: 'job', onchange: pick('jobId') }, opts(st.jobs, st.jobId)),
-    h('p', { className: 'note' }, '시연 모드에서는 가상 기업과 연습용 직무가 표시됩니다.'),
+    h('p', { className: 'note' }, '기업 공식 소개와 팀 작성 직무 연습 기준을 구분합니다. 실제 지원서가 기업에 제출되지 않습니다.'),
     next,
   ];
 }
@@ -177,6 +200,7 @@ function S2() {
   });
   const analyze = h('button', { onclick: () => {
     if (!st.resumeText.trim()) { fail('자기소개서를 입력해 주세요.'); ta.focus(); return; }
+    if(serverInfo?.aiMode==='external'&&!st.aiConsent){fail('외부 AI 전송 안내를 확인하고 동의해 주세요.');$('ai-consent')?.focus();return;}
     run(analyze, '자기소개서를 분석하고 있습니다. 잠시 기다려 주세요.', async () => {
       st.analysis = null; resetQuestions(); gen.disabled = true; showAnalysis();
       st.analysis = await api('/api/resume/analyze', { resumeText: st.resumeText });
@@ -189,10 +213,26 @@ function S2() {
     resetQuestions(); st.questions = r.questions; go('S3');
   }));
   showAnalysis();
+  const upload=h('input',{id:'resume-file',type:'file',accept:'.pdf,.hwp,.hwpx,.docx,.txt'});
+  const uploadMessage=h('p',{id:'upload-message',role:'status'},st.uploadName?`불러온 파일: ${st.uploadName}`:'텍스트를 추출한 뒤 아래에서 수정할 수 있습니다.');
+  const uploadButton=h('button',{onclick:()=>{
+    const file=upload.files?.[0];
+    if(!file){fail('불러올 파일을 선택해 주세요.');return;}
+    if(file.size>5242880){fail('파일은 최대 5MB까지 가능합니다.');return;}
+    if(st.resumeText&&!confirm('파일의 텍스트로 현재 자기소개서 내용을 바꿀까요?'))return;
+    run(uploadButton,'문서에서 텍스트를 불러오고 있습니다.',async()=>{
+      const result=await api('/api/documents/extract',{},file);
+      ta.value=result.text;ta.dispatchEvent(new Event('input'));st.uploadName=file.name;
+      uploadMessage.textContent=`${file.name} · ${result.text.length}자 불러옴. `+(result.truncated?'앞 10,000자만 가져왔습니다. ':'')+'표·줄바꿈·누락을 확인해 주세요. 파일은 서버에 저장하지 않습니다.';
+      upload.value='';ta.focus();
+    });
+  }},'파일에서 불러오기');
   return [
-    title('당신의 경험을 들려주세요.'),
+    h('p',{className:'eyebrow'},'PREPARE YOUR APPLICATION'),title('경험을 담아, 지원서를 준비하세요.'),
     h('p', { className: 'lead' }, '자기소개서를 붙여 넣거나 경험을 직접 적어 주세요. 분석 결과를 확인한 뒤 질문을 만들 수 있어요.'),
     summaryLine(),
+    h('section',{className:'upload-panel'},h('h3',{},'작성해 둔 문서가 있나요?'),h('p',{},'PDF · HWP 5 · HWPX · DOCX · UTF-8 TXT / 최대 5MB. 스캔·암호 문서는 텍스트를 직접 입력해 주세요.'),h('label',{htmlFor:'resume-file'},'자기소개서 파일 선택'),upload,uploadButton,uploadMessage),
+    serverInfo?.aiMode==='external'?h('label',{className:'consent'},h('input',{id:'ai-consent',type:'checkbox',checked:st.aiConsent,onchange:e=>{st.aiConsent=e.target.checked;}}),'자기소개서와 답변이 '+(serverInfo.aiProvider==='groq'?'Groq':'설정된 외부 AI 공급자')+'로 전송됨을 확인했습니다. 이름·연락처 등 개인정보를 제외하고 연습하겠습니다.'):null,
     h('label', { htmlFor: 'resume' }, '자기소개서'), ta, count,
     h('button', { onclick: () => go('S1') }, '이전'), analyze, gen, result,
   ];
@@ -209,7 +249,8 @@ function S3() {
   };
   const list = st.questions.length
     ? h('ul', { className: 'q' }, st.questions.map((q, i) => h('li', {},
-        h('p', {}, q.text),
+    h('p', {}, q.text),
+    h('div',{className:'references'},(q.references||[]).filter(r=>r.url?.startsWith('https://')).map(r=>h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},r.name+' ↗'))),
         h('p', {}, st.feedbacks[q.questionId] ? '✓ 피드백 받음' : '○ 미답변'),
         h('button', { onclick: () => { st.current = i; go('S4'); } }, '연습하기'))))
     : h('p', {}, '생성된 질문이 없습니다. 다시 만들어 주세요.');
@@ -246,7 +287,7 @@ function S4() {
     }
     return box;
   };
-  const kwBtns = (q.keywords || []).map((kw) => {
+  const kwBtns = [...new Set([...(q.keywords || []),'경험','문제','해결','도움','질문'])].map((kw) => {
     const b = h('button', { onclick: () => run(b, `'${kw}' 수어 자료를 찾고 있습니다.`, async () => {
       try { st.signs[kw] = await api('/api/signs?keyword=' + encodeURIComponent(kw)); } catch { st.signs[kw] = 'error'; }
       if (b.isConnected && st.screen === 'S4') b.nextElementSibling.replaceWith(showSign(kw));
@@ -278,7 +319,7 @@ function S4() {
     title('질문 연습'),
     h('p', {}, `${st.current + 1} / ${st.questions.length}`),
     h('p', { className: 'question-text' }, h('strong', {}, q.text)),
-    h('section', {}, h('h3', {}, '관련 수어 자료'), kwBtns.length ? kwBtns.flat() : h('p', {}, '이 질문에는 조회할 키워드가 없습니다.'), signBox),
+    h('section', {className:'sign-panel'}, h('h3', {}, '단어 이해를 돕는 수어 사전'),h('p',{className:'note'},'질문 키워드와 일반 참고어입니다. 원문 사전에서 확인하세요. 질문 전체 번역이나 문맥 의미의 검증 결과가 아닙니다.'), kwBtns.length ? kwBtns.flat() : h('p', {}, '이 질문에는 조회할 키워드가 없습니다.'), signBox),
     h('section', {}, h('label', { htmlFor: 'answer' }, '내 답변'), ta, count, fb),
     fbBox,
     h('button', { onclick: () => go('S3') }, '질문 목록으로'),
@@ -308,9 +349,10 @@ window.addEventListener('beforeunload', (e) => {
 render();
 // 입력 전에 현재 연결 모드를 확인한다. 실패 시 시작 버튼으로 재시도할 수 있다.
 api('/api/health').then(info => {
+  serverInfo=info;
   $('demo-banner').hidden = false;
   $('demo-banner').textContent = info.aiMode === 'demo-rule-based'
-    ? '시연 모드 · 가상 자료와 규칙 기반 응답을 사용합니다. 실제 AI 분석이 아닙니다.'
+    ? 'AI 시연 모드 · 규칙 기반 응답입니다. '+(info.dataMode==='live'?'기업·수어는 출처가 있는 참고 자료입니다.':'가상 연습 자료를 사용합니다.')
     : info.aiMode === 'local-model'
       ? '로컬 AI 모드 · 이 PC에 설치된 모델로 처리합니다.'
       : '외부 AI 모드 · 입력 내용이 설정된 AI 공급자로 전송됩니다.';
