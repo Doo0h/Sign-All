@@ -252,11 +252,9 @@ function S2() {
     });
   }},'파일에서 불러오기');
   return [
-    h('p',{className:'eyebrow'},'PREPARE YOUR APPLICATION'),title('경험을 담아, 지원서를 준비하세요.'),
-    h('p', { className: 'lead' }, '자기소개서를 붙여 넣거나 경험을 직접 적어 주세요. 분석 결과를 확인한 뒤 질문을 만들 수 있어요.'),
-    summaryLine(),
+    title('자기소개서'),
     h('section',{className:'resume-editor','aria-label':'자기소개서 작성'},
-      h('label', { htmlFor: 'resume',className:'resume-title' }, '자기소개서'), ta, count,
+      h('label', { htmlFor: 'resume',className:'resume-title' }, '내용 작성'), ta, count,
       h('div',{className:'resume-attachment'},h('label',{htmlFor:'resume-file'},'파일로 불러오기'),
         h('p',{className:'resume-file-help'},'PDF · HWP 5 · HWPX · DOCX · UTF-8 TXT / 최대 5MB. 스캔·암호 문서는 직접 입력해 주세요.'),
         h('div',{className:'resume-file-controls'},upload,uploadButton),uploadMessage)),
@@ -277,7 +275,6 @@ function S3() {
     ? h('ul', { className: 'q' }, st.questions.map((q, i) => h('li', {},
     h('p', {}, q.text),
     h('div',{className:'references'},(q.references||[]).filter(r=>r.id!=='team-practice-rubric' && r.url?.startsWith('https://')).map(r=>h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},r.name+' ↗'))),
-        h('p', {}, st.feedbacks[q.questionId] ? '✓ 피드백 받음' : '○ 미답변'),
         h('button', { onclick: () => { st.current = i; go('S4'); } }, '연습하기'))))
     : h('p', {}, '생성된 질문이 없습니다. 다시 만들어 주세요.');
   const end = h('button', { onclick: () => run(end, '종료하는 중…', endSession) }, '연습 종료');
@@ -313,11 +310,21 @@ function S4() {
     return box;
   };
   const kwBtns = [...new Set([...(q.keywords || []),'경험','문제','해결','도움','질문'])].map((kw) => {
-    const b = h('button', { className:'sign-card-button', 'aria-label':`'${kw}' 수어 자료 보기`, onclick: () => run(b, `'${kw}' 수어 자료를 찾고 있습니다.`, async () => {
-      try { st.signs[kw] = await api('/api/signs?keyword=' + encodeURIComponent(kw)); } catch { st.signs[kw] = 'error'; }
-      if (b.isConnected && st.screen === 'S4') b.nextElementSibling.replaceWith(showSign(kw));
-    }) }, h('span',{className:'sign-card-kind'},(q.keywords||[]).includes(kw)?'질문 핵심어':'일반 참고어'),h('strong',{},kw),h('span',{className:'sign-card-action'},'수어 자료 보기 →'));
-    return h('article',{className:'sign-card'},b,showSign(kw));
+    const b = h('button', { className:'sign-card-button', 'aria-label':`'${kw}' 수어 자료 보기`, 'aria-expanded':'false', 'aria-controls':'sign-'+kw, onclick: () => {
+      if(b.getAttribute('aria-expanded')==='true'){
+        b.setAttribute('aria-expanded','false');b.nextElementSibling.hidden=true;
+        b.querySelector('.sign-card-action').textContent='수어 자료 보기 →';return;
+      }
+      run(b, `'${kw}' 수어 자료를 찾고 있습니다.`, async () => {
+        if(!st.signs[kw] || st.signs[kw]==='error')try { st.signs[kw] = await api('/api/signs?keyword=' + encodeURIComponent(kw)); } catch { st.signs[kw] = 'error'; }
+        if (b.isConnected && st.screen === 'S4'){
+          b.nextElementSibling.replaceWith(showSign(kw));b.setAttribute('aria-expanded','true');
+          b.querySelector('.sign-card-action').textContent='접기 ↑';
+        }
+      });
+    } }, h('span',{className:'sign-card-kind'},(q.keywords||[]).includes(kw)?'질문 핵심어':'일반 참고어'),h('strong',{},kw),h('span',{className:'sign-card-action'},'수어 자료 보기 →'));
+    const result=showSign(kw);result.hidden=true;
+    return h('article',{className:'sign-card'},b,result);
   });
 
   const showFeedback = () => {
