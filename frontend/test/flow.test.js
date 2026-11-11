@@ -17,7 +17,7 @@ async function setup(t, intercept) {
   const w = dom.window, d = w.document;
   w.confirm = () => true;
   w.AbortSignal = AbortSignal;
-  w.fetch = (url, options) => intercept?.(url, options) ?? fetch(url.replace('http://127.0.0.1:3001',base),options);
+  w.fetch = (url, options) => intercept?.(url, options) ?? fetch(base+url,options);
   w.eval(script + '\nwindow.testState = () => st;');
   const wait = async pred => {
     for(let i=0;i<300;i++) { if(pred()) return; await new Promise(r=>setTimeout(r,10)); }
@@ -69,4 +69,33 @@ test('종료 연결 실패는 성공으로 표시하지 않고 재시도한다',
   await h.questions(); h.click('연습 종료'); await h.wait(()=>h.d.getElementById('error').textContent.includes('연결'));
   assert.equal(h.d.querySelector('main').dataset.screen,'S3'); assert.ok(h.w.testState().token);
   fail=false; h.click('연습 종료'); await h.screen('S5');
+});
+
+test('company cards filter and select the company without submitting an application',async t=>{
+ const h=await setup(t);h.click('내 면접');await h.screen('S1');
+ h.input('company-search','없는기업');assert.ok(h.d.body.textContent.includes('검색 결과가 없습니다'));
+ h.input('company-search','');h.click('이 기업으로 연습');assert.equal(h.d.getElementById('company').value,'demo-company');
+ assert.ok(h.d.body.textContent.includes('실제 지원서가 기업에 제출되지 않습니다'));
+});
+
+test('document upload populates editable text and invalidates existing analysis',async t=>{
+ const h=await setup(t,(url,options)=>{
+  if(url!=='/api/documents/extract')return;
+  assert.equal(options.headers['Content-Type'],'application/octet-stream');assert.equal(options.headers['X-File-Name'],'resume.txt');
+  return Promise.resolve(new Response(JSON.stringify({data:{text:'추출한 가상 경험',truncated:false,warnings:[],stored:false}})));
+ });
+ await h.start();h.input('resume','이전 가상 입력');h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);
+ Object.defineProperty(h.d.getElementById('resume-file'),'files',{value:[new h.w.File(['synthetic'],'resume.txt')],configurable:true});
+ h.click('파일에서 불러오기');await h.wait(()=>h.d.getElementById('resume').value==='추출한 가상 경험');
+ assert.equal(h.w.testState().analysis,null);assert.ok(h.d.getElementById('generate').disabled);assert.ok(h.d.getElementById('upload-message').textContent.includes('저장하지 않습니다'));
+});
+
+test('external AI requires the visible transmission acknowledgement',async t=>{
+ let calls=0;
+ const h=await setup(t,(url)=>{
+  if(url==='/api/health')return Promise.resolve(new Response(JSON.stringify({data:{aiMode:'external',aiProvider:'groq'}})));
+  if(url==='/api/resume/analyze')calls++;
+ });
+ await h.start();h.input('resume','가상 입력');h.click('분석하기');assert.equal(calls,0);assert.ok(h.d.getElementById('error').textContent.includes('동의'));
+ h.d.getElementById('ai-consent').click();h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);assert.equal(calls,1);
 });
