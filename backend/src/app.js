@@ -3,12 +3,15 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import {config,ApiError,fail,fields,text,id} from './common.js';
 import {openDatabase,importDataset,repository,demoData} from './db.js';
 import {createAI} from './ai.js';
+import {extractDocument,documentTypes} from './documents.js';
+import {isIP} from 'node:net';
 
 export function createApp(options={}) {
   const cfg=options.config || config();
   const db=options.db || openDatabase(cfg.dbPath);
   if(cfg.mode==='demo') importDataset(db,demoData);
-  const repo=repository(db,cfg.mode);
+  const repo=repository(db,cfg.referenceMode || cfg.mode);
+  let extracting=0;
   const ai=options.ai || createAI(cfg);
   const sessions=new Map(), rates=new Map();
   let active=0, calls=0, budgetUntil=Date.now()+3600000;
@@ -57,16 +60,17 @@ export function createApp(options={}) {
       if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
       if(req.method==='OPTIONS'){
         res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Session-Token');res.writeHead(204);return res.end();
+        res.setHeader('Access-Control-Allow-Headers','Content-Type,X-Session-Token,X-File-Name');res.writeHead(204);return res.end();
       }
-      const ip=req.socket.remoteAddress || 'unknown';const now=Date.now();
+      const forwarded=req.headers['x-forwarded-for'];
+      const ip=cfg.trustProxy&&typeof forwarded==='string'&&isIP(forwarded)?forwarded:req.socket.remoteAddress || 'unknown';const now=Date.now();
       let rate=rates.get(ip);
       if(!rate || rate.until<=now){clean();if(rates.size>=10000 && !rates.has(ip))fail(503,'SERVER_BUSY','잠시 후 다시 시도해 주세요.',undefined,true);rate={count:0,until:now+60000};rates.set(ip,rate);}
       if(++rate.count>cfg.rateLimit){res.setHeader('Retry-After',Math.ceil((rate.until-now)/1000));fail(429,'RATE_LIMITED','요청 횟수가 많습니다. 잠시 후 다시 시도해 주세요.',undefined,true);}
       const url=new URL(req.url,'http://localhost');
       const path=url.pathname;
       let result;
-      if(req.method==='GET' && path==='/api/health')result={status:'ok',mode:cfg.mode,aiMode:cfg.mode==='demo'?'demo-rule-based':cfg.aiProvider==='ollama'?'local-model':'external',persistentUserData:false};
+      if(req.method==='GET' && path==='/api/health')result={status:'ok',mode:cfg.mode,dataMode:cfg.referenceMode||cfg.mode,aiProvider:cfg.aiProvider,aiMode:cfg.mode==='demo'?'demo-rule-based':cfg.aiProvider==='ollama'?'local-model':'external',documentTypes,persistentUserData:false};
       else if(req.method==='POST' && path==='/api/session'){
         const b=await body(req);fields(b,[]);clean();
         if(sessions.size>=cfg.maxSessions)fail(503,'SESSION_CAPACITY','세션 한도에 도달했습니다.',undefined,true);
@@ -91,6 +95,22 @@ export function createApp(options={}) {
         if(!list.length && cfg.mode==='live')fail(503,'REFERENCE_DATA_UNAVAILABLE','검증된 수어 자료가 아직 준비되지 않았습니다.');
         const items=list.filter(r=>r.term===keyword || r.keywords.includes(keyword)).slice(0,20);
         result={items,matchStatus:items.length?'candidate':'not_found',notice:'문자열 검색 후보이며 질문 전체 번역이나 문맥상 의미 일치를 보장하지 않습니다.'};
+      } else if(req.method==='POST' && path==='/api/documents/extract'){
+        getSession(req);
+        if(extracting>=2)fail(503,'DOCUMENT_BUSY','다른 문서를 처리 중입니다. 잠시 후 다시 시도해 주세요.',undefined,true);
+        if((req.headers['content-type']||'').split(';')[0]!=='application/octet-stream')fail(415,'UNSUPPORTED_MEDIA_TYPE','파일 바이너리 본문이 필요합니다.');
+        let filename;
+        try {filename=decodeURIComponent(req.headers['x-file-name']||'');}catch{fail(400,'INVALID_FILE_NAME','파일 이름을 확인해 주세요.');}
+        const extension=filename.split('.').pop()?.toLowerCase();
+        if(filename.length>255 || !documentTypes.includes(extension))fail(415,'UNSUPPORTED_FILE_TYPE','PDF, HWP, HWPX, DOCX, TXT 파일을 선택해 주세요.');
+        extracting++;
+        try {
+          let size=0;const chunks=[];
+          for await(const chunk of req){size+=chunk.length;if(size>cfg.uploadLimit)fail(413,'FILE_TOO_LARGE','파일은 최대 5MB까지 가능합니다.');chunks.push(chunk);}
+          if(!size)fail(400,'EMPTY_FILE','빈 파일은 사용할 수 없습니다.');
+          result=await extractDocument(Buffer.concat(chunks),extension,cfg.python);
+          getSession(req);
+        }finally{extracting--;}
       } else if(req.method==='POST' && path==='/api/resume/analyze'){
         const s=getSession(req),b=await body(req);fields(b,['resumeText']);const resumeText=text(b.resumeText,'resumeText',10000);
         if(s.analysisBusy || s.questionsBusy)fail(409,'CONTEXT_BUSY','현재 요청이 완료된 뒤 다시 시도해 주세요.',undefined,true);

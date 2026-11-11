@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/.env
+**/.env.*
+**/var
+**/__pycache__
+**/*.sqlite*
+**/*.log
+uploads
+data/private
+data/raw
+deliverables
