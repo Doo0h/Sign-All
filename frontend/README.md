@@ -2,6 +2,12 @@
 
 Sign-All의 텍스트 면접 연습 UI입니다. 별도 프레임워크나 패키지 설치 없이 Node.js 24로 실행합니다.
 
+5주차 확장: 기업 카드 검색·선택, 문서 텍스트 불러오기, 외부 AI 전송 확인, 공식 수어 사전 링크를 제공합니다. 입사지원 사이트 형태의 **면접 연습 서비스**이며 실제 채용 접수를 하지 않습니다.
+
+Docker 실행은 저장소 루트에서 `docker compose up -d --build --wait`, 접속은 http://localhost:8080 입니다. 프론트의 `/api`가 backend로 프록시되므로 배포 시 API 주소를 사용자 PC의 localhost로 바꾸지 않습니다.
+
+직접 실행 시 문서 추출을 사용하려면 backend의 Python 의존성을 설치하세요. 프론트 테스트는 `npm ci` 후 Node 24에서 `npm test -- --test-concurrency=1`로 실행합니다.
+
 ## 실행
 
 저장소 루트에서 터미널을 각각 열어 실행합니다.
