@@ -16,6 +16,9 @@ test('curated references work with demo AI without fabricated NCS or video claim
  const companies=await get('/api/companies');assert.equal(companies.total,3);assert.ok(companies.items.every(c=>c.practiceOnly&&c.sourcePageUrl.startsWith('https://')));
  const sign=await get('/api/signs?keyword='+encodeURIComponent('경험'));assert.equal(sign.matchStatus,'candidate');assert.equal(sign.items[0].semanticStatus,'unreviewed');assert.equal(sign.items[0].videoUrl,undefined);
  const token=(await post('/api/session',{})).sessionToken;
+ const compound=await get('/api/signs?keyword='+encodeURIComponent('문제 해결'));assert.deepEqual(compound.items.map(s=>s.term).sort(),['문제','해결']);
+ const partial=await get('/api/signs?keyword='+encodeURIComponent('회사 지식'));assert.equal(partial.items[0].term,'회사');
+ assert.equal((await get('/api/signs?keyword='+encodeURIComponent('무책임'))).items.length,0);
  const catalog=await get('/api/signs/catalog');assert.equal(catalog.total,21);assert.equal(catalog.items.length,12);
  const page2=await get('/api/signs/catalog?offset=12');assert.equal(page2.items.length,9);assert.ok(page2.items.every(s=>!catalog.items.some(first=>first.id===s.id)));
  const companySign=await get('/api/signs/catalog?q='+encodeURIComponent('회사'));assert.equal(companySign.total,1);assert.equal(companySign.items[0].originalId,'11237');

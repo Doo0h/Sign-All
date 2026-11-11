@@ -101,7 +101,10 @@ export function createApp(options={}) {
         const keyword=text(url.searchParams.get('keyword'),'keyword',100);
         const list=repo.list('signs');
         if(!list.length && cfg.mode==='live')fail(503,'REFERENCE_DATA_UNAVAILABLE','검증된 수어 자료가 아직 준비되지 않았습니다.');
-        const items=list.filter(r=>r.term===keyword || r.keywords.includes(keyword)).slice(0,20);
+        const normalized=keyword.normalize('NFC');
+        const words=normalized.split(/[\s·,，/()]+/u).filter(Boolean);
+        const exact=list.filter(r=>[r.term,...r.keywords].some(v=>v.normalize('NFC')===normalized));
+        const items=(exact.length?exact:list.filter(r=>[r.term,...r.keywords].some(v=>words.includes(v.normalize('NFC'))))).slice(0,20);
         result={items,matchStatus:items.length?'candidate':'not_found',notice:'문자열 검색 후보이며 질문 전체 번역이나 문맥상 의미 일치를 보장하지 않습니다.'};
       } else if(req.method==='POST' && path==='/api/documents/extract'){
         getSession(req);
