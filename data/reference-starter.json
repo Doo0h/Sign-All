@@ -1,35 +1,456 @@
 {
   "sources": [
-    {"id":"naver-about","mode":"live","name":"NAVER 공식 회사 소개","url":"https://www.navercorp.com/company/about","checkedAt":"2026-11-11","usage":"공개 회사 정보의 짧은 사실 요약과 원문 링크. 채용 공고·제휴 정보 아님.","verificationStatus":"verified","verificationScope":"page-and-company-facts"},
-    {"id":"kakao-services","mode":"live","name":"카카오 공식 서비스 소개","url":"https://www.kakaocorp.com/page/service/service","checkedAt":"2026-11-11","usage":"서비스 분야 요약과 원문 링크. 채용 기준·채용 공고 아님.","verificationStatus":"verified","verificationScope":"page-and-company-facts"},
-    {"id":"samsung-about","mode":"live","name":"삼성전자 공식 회사 소개","url":"https://www.samsung.com/sec/about-us/company-info/","checkedAt":"2026-11-11","usage":"회사 소개 링크와 전자제품 분야의 짧은 요약. 로고·이미지 복제 없음.","verificationStatus":"verified","verificationScope":"page-and-company-facts"},
-    {"id":"team-practice-rubric","mode":"live","name":"Sign-All 작성 일반 직무 연습 기준","url":"https://github.com/Doo0h/Sign-All/blob/main/docs/reference-catalog.md","checkedAt":"2026-11-11","usage":"팀 작성 연습 기준. 공식 NCS·기업 채용 기준·평가 등급 아님.","verificationStatus":"verified","verificationScope":"team-authored-practice-only"},
-    {"id":"ksl-dictionary","mode":"live","name":"국립국어원 한국수어사전","url":"https://sldict.korean.go.kr/front/sign/signList.do","checkedAt":"2026-11-11","usage":"표제어 식별과 원문 상세 페이지 링크만 제공. 영상·이미지 복제 및 삽입 없음. 문맥 의미는 미검증.","verificationStatus":"verified","verificationScope":"entry-existence-only"}
+    {
+      "id": "naver-about",
+      "mode": "live",
+      "name": "NAVER 공식 회사 소개",
+      "url": "https://www.navercorp.com/company/about",
+      "checkedAt": "2026-11-11",
+      "usage": "공개 회사 정보의 짧은 사실 요약과 원문 링크. 채용 공고·제휴 정보 아님.",
+      "verificationStatus": "verified",
+      "verificationScope": "page-and-company-facts"
+    },
+    {
+      "id": "kakao-services",
+      "mode": "live",
+      "name": "카카오 공식 서비스 소개",
+      "url": "https://www.kakaocorp.com/page/service/service",
+      "checkedAt": "2026-11-11",
+      "usage": "서비스 분야 요약과 원문 링크. 채용 기준·채용 공고 아님.",
+      "verificationStatus": "verified",
+      "verificationScope": "page-and-company-facts"
+    },
+    {
+      "id": "samsung-about",
+      "mode": "live",
+      "name": "삼성전자 공식 회사 소개",
+      "url": "https://www.samsung.com/sec/about-us/company-info/",
+      "checkedAt": "2026-11-11",
+      "usage": "회사 소개 링크와 전자제품 분야의 짧은 요약. 로고·이미지 복제 없음.",
+      "verificationStatus": "verified",
+      "verificationScope": "page-and-company-facts"
+    },
+    {
+      "id": "team-practice-rubric",
+      "mode": "live",
+      "name": "Sign-All 작성 일반 직무 연습 기준",
+      "url": "https://github.com/Doo0h/Sign-All/blob/main/docs/reference-catalog.md",
+      "checkedAt": "2026-11-11",
+      "usage": "팀 작성 연습 기준. 공식 NCS·기업 채용 기준·평가 등급 아님.",
+      "verificationStatus": "verified",
+      "verificationScope": "team-authored-practice-only"
+    },
+    {
+      "id": "ksl-dictionary",
+      "mode": "live",
+      "name": "국립국어원 한국수어사전",
+      "url": "https://sldict.korean.go.kr/front/sign/signList.do",
+      "checkedAt": "2026-11-11",
+      "usage": "표제어 식별과 원문 상세 페이지 링크만 제공. 영상·이미지 복제 및 삽입 없음. 문맥 의미는 미검증.",
+      "verificationStatus": "verified",
+      "verificationScope": "entry-existence-only"
+    }
   ],
   "companies": [
-    {"id":"naver","sourceId":"naver-about","name":"NAVER","industry":"인터넷 · 플랫폼","summary":"검색, AI, 커머스, 콘텐츠와 클라우드 등의 사업을 소개하는 기술 기업입니다.","sourcePageUrl":"https://www.navercorp.com/company/about","checkedAt":"2026-11-11","practiceOnly":true,"accent":"green"},
-    {"id":"kakao","sourceId":"kakao-services","name":"카카오","industry":"커뮤니케이션 · 플랫폼","summary":"카카오톡을 비롯한 다양한 디지털 서비스를 제공합니다. 공식 서비스 소개를 참고해 경험을 정리해 보세요.","sourcePageUrl":"https://www.kakaocorp.com/page/service/service","checkedAt":"2026-11-11","practiceOnly":true,"accent":"yellow"},
-    {"id":"samsung","sourceId":"samsung-about","name":"삼성전자","industry":"전자제품 · 기술","summary":"전자제품과 기술 분야의 회사입니다. 공식 회사 소개를 읽고 자신의 기술 경험을 연결해 연습합니다.","sourcePageUrl":"https://www.samsung.com/sec/about-us/company-info/","checkedAt":"2026-11-11","practiceOnly":true,"accent":"blue"}
+    {
+      "id": "naver",
+      "sourceId": "naver-about",
+      "name": "NAVER",
+      "industry": "인터넷 · 플랫폼",
+      "summary": "검색, AI, 커머스, 콘텐츠와 클라우드 등의 사업을 소개하는 기술 기업입니다.",
+      "sourcePageUrl": "https://www.navercorp.com/company/about",
+      "checkedAt": "2026-11-11",
+      "practiceOnly": true,
+      "accent": "green"
+    },
+    {
+      "id": "kakao",
+      "sourceId": "kakao-services",
+      "name": "카카오",
+      "industry": "커뮤니케이션 · 플랫폼",
+      "summary": "카카오톡을 비롯한 다양한 디지털 서비스를 제공합니다. 공식 서비스 소개를 참고해 경험을 정리해 보세요.",
+      "sourcePageUrl": "https://www.kakaocorp.com/page/service/service",
+      "checkedAt": "2026-11-11",
+      "practiceOnly": true,
+      "accent": "yellow"
+    },
+    {
+      "id": "samsung",
+      "sourceId": "samsung-about",
+      "name": "삼성전자",
+      "industry": "전자제품 · 기술",
+      "summary": "전자제품과 기술 분야의 회사입니다. 공식 회사 소개를 읽고 자신의 기술 경험을 연결해 연습합니다.",
+      "sourcePageUrl": "https://www.samsung.com/sec/about-us/company-info/",
+      "checkedAt": "2026-11-11",
+      "practiceOnly": true,
+      "accent": "blue"
+    }
   ],
   "jobs": [
-    {"id":"backend-practice","sourceId":"team-practice-rubric","name":"백엔드 개발","classification":"일반 직무 연습","description":"API 설계, 데이터 처리, 오류 해결 경험을 설명합니다.","practiceOnly":true},
-    {"id":"frontend-practice","sourceId":"team-practice-rubric","name":"프론트엔드 개발","classification":"일반 직무 연습","description":"화면 구현, 접근성, 사용자 문제 해결 경험을 설명합니다.","practiceOnly":true},
-    {"id":"data-practice","sourceId":"team-practice-rubric","name":"데이터 · AI","classification":"일반 직무 연습","description":"데이터 검증, 실험 설계, 결과의 한계를 설명합니다.","practiceOnly":true}
+    {
+      "id": "backend-practice",
+      "sourceId": "team-practice-rubric",
+      "name": "백엔드 개발",
+      "classification": "일반 직무 연습",
+      "description": "API 설계, 데이터 처리, 오류 해결 경험을 설명합니다.",
+      "practiceOnly": true
+    },
+    {
+      "id": "frontend-practice",
+      "sourceId": "team-practice-rubric",
+      "name": "프론트엔드 개발",
+      "classification": "일반 직무 연습",
+      "description": "화면 구현, 접근성, 사용자 문제 해결 경험을 설명합니다.",
+      "practiceOnly": true
+    },
+    {
+      "id": "data-practice",
+      "sourceId": "team-practice-rubric",
+      "name": "데이터 · AI",
+      "classification": "일반 직무 연습",
+      "description": "데이터 검증, 실험 설계, 결과의 한계를 설명합니다.",
+      "practiceOnly": true
+    }
   ],
   "units": [
-    {"id":"practice-problem","sourceId":"team-practice-rubric","name":"문제 해결 경험 설명","definition":"문제의 상황, 본인이 수행한 행동, 확인한 결과와 한계를 구체적으로 말하는 팀 작성 연습 요소. 공식 NCS가 아님."},
-    {"id":"practice-collaboration","sourceId":"team-practice-rubric","name":"협업 과정 설명","definition":"도움을 주고받거나 질문을 통해 이해를 맞춘 경험을 사실에 근거해 설명하는 팀 작성 연습 요소. 기업 채용 기준이 아님."}
+    {
+      "id": "practice-problem",
+      "sourceId": "team-practice-rubric",
+      "name": "문제 해결 경험 설명",
+      "definition": "문제의 상황, 본인이 수행한 행동, 확인한 결과와 한계를 구체적으로 말하는 팀 작성 연습 요소. 공식 NCS가 아님."
+    },
+    {
+      "id": "practice-collaboration",
+      "sourceId": "team-practice-rubric",
+      "name": "협업 과정 설명",
+      "definition": "도움을 주고받거나 질문을 통해 이해를 맞춘 경험을 사실에 근거해 설명하는 팀 작성 연습 요소. 기업 채용 기준이 아님."
+    }
   ],
   "job_units": [
-    {"jobId":"backend-practice","unitId":"practice-problem"},{"jobId":"backend-practice","unitId":"practice-collaboration"},
-    {"jobId":"frontend-practice","unitId":"practice-problem"},{"jobId":"frontend-practice","unitId":"practice-collaboration"},
-    {"jobId":"data-practice","unitId":"practice-problem"},{"jobId":"data-practice","unitId":"practice-collaboration"}
+    {
+      "jobId": "backend-practice",
+      "unitId": "practice-problem"
+    },
+    {
+      "jobId": "backend-practice",
+      "unitId": "practice-collaboration"
+    },
+    {
+      "jobId": "frontend-practice",
+      "unitId": "practice-problem"
+    },
+    {
+      "jobId": "frontend-practice",
+      "unitId": "practice-collaboration"
+    },
+    {
+      "jobId": "data-practice",
+      "unitId": "practice-problem"
+    },
+    {
+      "jobId": "data-practice",
+      "unitId": "practice-collaboration"
+    }
   ],
   "signs": [
-    {"id":"ksl-5447","sourceId":"ksl-dictionary","originalId":"5447","term":"도움","keywords":["도움","돕다","지원"],"sourcePageUrl":"https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5447&top_category=CTE","checkedAt":"2026-11-11","semanticStatus":"unreviewed","playbackStatus":"not-tested","mediaUsage":"source-link-only"},
-    {"id":"ksl-11634","sourceId":"ksl-dictionary","originalId":"11634","term":"질문","keywords":["질문","문의","묻다"],"sourcePageUrl":"https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=11634&top_category=CTE","checkedAt":"2026-11-11","semanticStatus":"unreviewed","playbackStatus":"not-tested","mediaUsage":"source-link-only"},
-    {"id":"ksl-6927","sourceId":"ksl-dictionary","originalId":"6927","term":"경험","keywords":["경험"],"sourcePageUrl":"https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6927&top_category=CTE","checkedAt":"2026-11-11","semanticStatus":"unreviewed","playbackStatus":"not-tested","mediaUsage":"source-link-only"},
-    {"id":"ksl-7320","sourceId":"ksl-dictionary","originalId":"7320","term":"문제","keywords":["문제"],"sourcePageUrl":"https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7320&top_category=CTE","checkedAt":"2026-11-11","semanticStatus":"unreviewed","playbackStatus":"not-tested","mediaUsage":"source-link-only"},
-    {"id":"ksl-5294","sourceId":"ksl-dictionary","originalId":"5294","term":"해결","keywords":["해결","처리"],"sourcePageUrl":"https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5294&top_category=CTE","checkedAt":"2026-11-11","semanticStatus":"unreviewed","playbackStatus":"not-tested","mediaUsage":"source-link-only"}
+    {
+      "id": "ksl-5447",
+      "sourceId": "ksl-dictionary",
+      "originalId": "5447",
+      "term": "도움",
+      "keywords": [
+        "도움",
+        "돕다",
+        "지원"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5447&top_category=CTE",
+      "checkedAt": "2026-11-11",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-11634",
+      "sourceId": "ksl-dictionary",
+      "originalId": "11634",
+      "term": "질문",
+      "keywords": [
+        "질문",
+        "문의",
+        "묻다"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=11634&top_category=CTE",
+      "checkedAt": "2026-11-11",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-6927",
+      "sourceId": "ksl-dictionary",
+      "originalId": "6927",
+      "term": "경험",
+      "keywords": [
+        "경험"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6927&top_category=CTE",
+      "checkedAt": "2026-11-11",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-7320",
+      "sourceId": "ksl-dictionary",
+      "originalId": "7320",
+      "term": "문제",
+      "keywords": [
+        "문제"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7320&top_category=CTE",
+      "checkedAt": "2026-11-11",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-5294",
+      "sourceId": "ksl-dictionary",
+      "originalId": "5294",
+      "term": "해결",
+      "keywords": [
+        "해결",
+        "처리"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5294&top_category=CTE",
+      "checkedAt": "2026-11-11",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-11237",
+      "sourceId": "ksl-dictionary",
+      "originalId": "11237",
+      "term": "회사",
+      "keywords": [
+        "회사"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=11237&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-7480",
+      "sourceId": "ksl-dictionary",
+      "originalId": "7480",
+      "term": "준비",
+      "keywords": [
+        "준비"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7480&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-6818",
+      "sourceId": "ksl-dictionary",
+      "originalId": "6818",
+      "term": "계획",
+      "keywords": [
+        "계획"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6818&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-5522",
+      "sourceId": "ksl-dictionary",
+      "originalId": "5522",
+      "term": "노력",
+      "keywords": [
+        "노력"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5522&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-9209",
+      "sourceId": "ksl-dictionary",
+      "originalId": "9209",
+      "term": "성공",
+      "keywords": [
+        "성공"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=9209&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-7764",
+      "sourceId": "ksl-dictionary",
+      "originalId": "7764",
+      "term": "실패",
+      "keywords": [
+        "실패"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7764&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-1502",
+      "sourceId": "ksl-dictionary",
+      "originalId": "1502",
+      "term": "책임",
+      "keywords": [
+        "책임"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=1502&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-12710",
+      "sourceId": "ksl-dictionary",
+      "originalId": "12710",
+      "term": "약속",
+      "keywords": [
+        "약속"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=12710&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-24028",
+      "sourceId": "ksl-dictionary",
+      "originalId": "24028",
+      "term": "시간",
+      "keywords": [
+        "시간"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=24028&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-9131",
+      "sourceId": "ksl-dictionary",
+      "originalId": "9131",
+      "term": "배우다",
+      "keywords": [
+        "배우다"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=9131&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-6241",
+      "sourceId": "ksl-dictionary",
+      "originalId": "6241",
+      "term": "생각",
+      "keywords": [
+        "생각"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6241&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-10720",
+      "sourceId": "ksl-dictionary",
+      "originalId": "10720",
+      "term": "설명",
+      "keywords": [
+        "설명"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=10720&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-5993",
+      "sourceId": "ksl-dictionary",
+      "originalId": "5993",
+      "term": "이해",
+      "keywords": [
+        "이해"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5993&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-6215",
+      "sourceId": "ksl-dictionary",
+      "originalId": "6215",
+      "term": "대화",
+      "keywords": [
+        "대화"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6215&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-272",
+      "sourceId": "ksl-dictionary",
+      "originalId": "272",
+      "term": "직장",
+      "keywords": [
+        "직장"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=272&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-4594",
+      "sourceId": "ksl-dictionary",
+      "originalId": "4594",
+      "term": "취업",
+      "keywords": [
+        "취업"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=4594&top_category=CTE",
+      "checkedAt": "2026-11-12",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    }
   ]
 }
