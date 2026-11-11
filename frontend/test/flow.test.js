@@ -54,6 +54,9 @@ test('실제 demo HTTP와 DOM 전체 흐름, 수어 없음, 답변 수정, 종�
   const h=await setup(t);
   await h.questions(); h.click('연습하기'); await h.screen('S4');
   h.click('수어 자료 보기'); await h.wait(()=>h.d.body.textContent.includes('찾지 못했습니다'));
+  const card=h.d.querySelector('.sign-card-button');assert.equal(card.getAttribute('aria-expanded'),'true');
+  card.click();assert.equal(card.getAttribute('aria-expanded'),'false');assert.equal(card.nextElementSibling.hidden,true);
+  card.click();await h.wait(()=>card.getAttribute('aria-expanded')==='true');assert.equal(card.nextElementSibling.hidden,false);
   h.input('answer','<img src=x onerror=alert(1)> 가상 답변입니다.');
   h.click('피드백 받기'); await h.wait(()=>h.d.body.textContent.includes('실제 AI 평가가 아닙니다'));
   assert.equal(h.d.querySelector('main img'),null);
