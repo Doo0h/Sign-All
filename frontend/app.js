@@ -95,7 +95,7 @@ function go(screen) {
   st.screen = screen; fail(); say(); render();
 }
 
-function render() {
+function render(focusTitle = true) {
   const main = $('main');
   main.replaceChildren();
   main.dataset.screen = st.screen;
@@ -109,7 +109,7 @@ function render() {
       h('span', { className: 'number', 'aria-hidden': 'true' }, i < current ? '✓' : String(i + 1)), label)));
   const view = { S0, S1, S2, S3, S4, S5, EXPIRED }[st.screen]();
   main.append(...view.filter(node => node != null && node !== false));
-  main.querySelector('h2')?.focus(); // 화면이 바뀌면 제목으로 포커스
+  if (focusTitle) main.querySelector('h2')?.focus(); // 사용자 화면 이동 시에만 제목으로 포커스
 }
 const title = (t) => h('h2', { tabIndex: -1 }, t);
 
@@ -370,7 +370,7 @@ window.addEventListener('beforeunload', (e) => {
   if (st.resumeText || Object.values(st.answers).some(Boolean)) e.preventDefault();
 });
 
-render();
+render(false);
 // 입력 전에 현재 연결 모드를 확인한다. 실패 시 시작 버튼으로 재시도할 수 있다.
 api('/api/health').then(info => {
   serverInfo=info;
