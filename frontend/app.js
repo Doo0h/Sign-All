@@ -7,7 +7,7 @@ const STEPS = { S0: '시작', S1: '기업·직무 선택', S2: '자기소개서'
 const fresh = () => ({
   screen: 'S0', token: null, isDemo: false, companies: [], jobs: [],
   companyId: '', jobId: '', resumeText: '', analysis: null,
-  questions: [], answers: {}, feedbacks: {}, signs: {}, current: 0, aiConsent: false, uploadName: '',
+  questions: [], answers: {}, feedbacks: {}, signs: {}, current: 0, uploadName: '',
 });
 let st = fresh();
 let busy = false;
@@ -225,7 +225,6 @@ function S2() {
   });
   const analyze = h('button', { onclick: () => {
     if (!st.resumeText.trim()) { fail('자기소개서를 입력해 주세요.'); ta.focus(); return; }
-    if(serverInfo?.aiMode==='external'&&!st.aiConsent){fail('외부 AI 전송 안내를 확인하고 동의해 주세요.');$('ai-consent')?.focus();return;}
     run(analyze, '자기소개서를 분석하고 있습니다. 잠시 기다려 주세요.', async () => {
       st.analysis = null; resetQuestions(); gen.disabled = true; showAnalysis();
       st.analysis = await api('/api/resume/analyze', { resumeText: st.resumeText });
@@ -239,7 +238,7 @@ function S2() {
   }));
   showAnalysis();
   const upload=h('input',{id:'resume-file',type:'file',accept:'.pdf,.hwp,.hwpx,.docx,.txt'});
-  const uploadMessage=h('p',{id:'upload-message',role:'status'},st.uploadName?`불러온 파일: ${st.uploadName}`:'텍스트를 추출한 뒤 아래에서 수정할 수 있습니다.');
+  const uploadMessage=h('p',{id:'upload-message',role:'status'},st.uploadName?`불러온 파일: ${st.uploadName}`:'파일의 텍스트를 위 입력란으로 불러와 수정할 수 있습니다.');
   const uploadButton=h('button',{onclick:()=>{
     const file=upload.files?.[0];
     if(!file){fail('불러올 파일을 선택해 주세요.');return;}
@@ -256,9 +255,11 @@ function S2() {
     h('p',{className:'eyebrow'},'PREPARE YOUR APPLICATION'),title('경험을 담아, 지원서를 준비하세요.'),
     h('p', { className: 'lead' }, '자기소개서를 붙여 넣거나 경험을 직접 적어 주세요. 분석 결과를 확인한 뒤 질문을 만들 수 있어요.'),
     summaryLine(),
-    h('section',{className:'upload-panel'},h('h3',{},'작성해 둔 문서가 있나요?'),h('p',{},'PDF · HWP 5 · HWPX · DOCX · UTF-8 TXT / 최대 5MB. 스캔·암호 문서는 텍스트를 직접 입력해 주세요.'),h('label',{htmlFor:'resume-file'},'자기소개서 파일 선택'),upload,uploadButton,uploadMessage),
-    serverInfo?.aiMode==='external'?h('label',{className:'consent'},h('input',{id:'ai-consent',type:'checkbox',checked:st.aiConsent,onchange:e=>{st.aiConsent=e.target.checked;}}),'자기소개서와 답변이 '+(serverInfo.aiProvider==='groq'?'Groq':'설정된 외부 AI 공급자')+'로 전송됨을 확인했습니다. 이름·연락처 등 개인정보를 제외하고 연습하겠습니다.'):null,
-    h('label', { htmlFor: 'resume' }, '자기소개서'), ta, count,
+    h('section',{className:'resume-editor','aria-label':'자기소개서 작성'},
+      h('label', { htmlFor: 'resume',className:'resume-title' }, '자기소개서'), ta, count,
+      h('div',{className:'resume-attachment'},h('label',{htmlFor:'resume-file'},'파일로 불러오기'),
+        h('p',{className:'resume-file-help'},'PDF · HWP 5 · HWPX · DOCX · UTF-8 TXT / 최대 5MB. 스캔·암호 문서는 직접 입력해 주세요.'),
+        h('div',{className:'resume-file-controls'},upload,uploadButton),uploadMessage)),
     h('button', { onclick: () => go('S1') }, '이전'), analyze, gen, result,
   ];
 }

@@ -109,12 +109,13 @@ test('document upload populates editable text and invalidates existing analysis'
  assert.equal(h.w.testState().analysis,null);assert.ok(h.d.getElementById('generate').disabled);assert.ok(h.d.getElementById('upload-message').textContent.includes('저장하지 않습니다'));
 });
 
-test('external AI requires the visible transmission acknowledgement',async t=>{
+test('external AI analysis starts directly from the unified resume editor',async t=>{
  let calls=0;
  const h=await setup(t,(url)=>{
   if(url==='/api/health')return Promise.resolve(new Response(JSON.stringify({data:{aiMode:'external',aiProvider:'groq'}})));
   if(url==='/api/resume/analyze')calls++;
  });
- await h.start();h.input('resume','가상 입력');h.click('분석하기');assert.equal(calls,0);assert.ok(h.d.getElementById('error').textContent.includes('동의'));
- h.d.getElementById('ai-consent').click();h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);assert.equal(calls,1);
+ await h.start();assert.equal(h.d.getElementById('ai-consent'),null);
+ const editor=h.d.querySelector('.resume-editor');assert.ok(editor.contains(h.d.getElementById('resume')));assert.ok(editor.contains(h.d.getElementById('resume-file')));
+ h.input('resume','가상 입력');h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);assert.equal(calls,1);
 });

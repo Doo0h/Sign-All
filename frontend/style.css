@@ -45,6 +45,16 @@ input[type=search]{width:100%;padding:13px 16px;border:1px solid #cbd8ce;border-
 html{overflow-y:scroll}
 #demo-banner{display:none!important}
 .hero:after{display:none}
+.resume-editor{border:1px solid var(--line);border-radius:14px;padding:22px;margin:20px 0;background:#fff}
+.resume-editor .resume-title{font-size:20px;margin:0 0 14px}
+.resume-editor textarea{min-height:280px;background:#fcfdfb}
+.resume-attachment{border-top:1px solid var(--line);padding-top:16px}
+.resume-attachment label{margin:0 0 6px}
+.resume-file-help,.resume-attachment>p{font-size:12px;color:var(--muted);margin:6px 0 12px}
+.resume-file-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.resume-file-controls input[type=file]{flex:1;min-width:180px;margin:0}
+.resume-file-controls button{margin:0}
+@media(max-width:720px){.resume-editor{padding:16px}.resume-file-controls{align-items:stretch;flex-direction:column}}
 
 /* Use the whole viewport; retain only readable inner gutters. */
 .workspace{width:100%;max-width:none;margin:0}
