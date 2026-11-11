@@ -1,3 +1,5 @@
+> 2026-11-11 갱신: 아래 4주차 기록은 이력이다. 5주차 신규 조사 결과는 [수어 조사 결과](week-05-sign-research.md)를 따른다.
+
 # 수어 자료 조사 및 키워드 연결 기준
 
 - 담당자: 모소연
@@ -176,7 +178,7 @@ https://sldict.korean.go.kr/demondicKor/signKorSearch.do
 - `playbackStatus`: 재생 확인 결과
 
 기록 규칙:
-- `sourceId`는 원본 식별자가 실제로 확인된 경우에만 입력한다.
+- `sourceId`는 `sources` 테이블의 내부 출처 ID다. 사전 원본 식별자는 조사 기록의 `originalId`로 별도 관리한다.
 - `term`은 실제 사전에서 확인한 표제어만 입력한다.
 - `keywords`는 연결 근거가 있는 키워드만 입력한다.
 - `meaning`은 실제 사전 설명 또는 검증 가능한 의미 정보가 확인된 경우에만 입력한다.
