@@ -26,9 +26,15 @@ export function config(env = process.env) {
   };
   const mode = env.APP_MODE || 'demo';
   if (!['demo', 'live'].includes(mode)) throw new Error('APP_MODE must be demo or live');
+  if(env.REFERENCE_MODE && !['demo','live'].includes(env.REFERENCE_MODE))throw new Error('REFERENCE_MODE must be demo or live');
   const aiProvider = env.AI_PROVIDER || 'external';
   if (!['external','ollama','groq'].includes(aiProvider)) throw new Error('AI_PROVIDER must be external, groq or ollama');
   return {
+    referenceMode: env.REFERENCE_MODE,
+    trustProxy: env.TRUST_PROXY==='true',
+    referenceDataPath: env.REFERENCE_DATA_PATH,
+    python: env.PYTHON_BIN || (process.platform==='win32'?'python':'python3'),
+    uploadLimit: num('MAX_UPLOAD_BYTES',5242880,1024,5242880),
     mode, host: env.HOST || '127.0.0.1', port: num('PORT', 3001, 0, 65535),
     dbPath: env.DB_PATH || './var/signall.sqlite',
     origins: (env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173').split(',').map(s => s.trim()).filter(Boolean),

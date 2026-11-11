@@ -1,7 +1,10 @@
 import {createApp} from './app.js';
 import {config} from './common.js';
+import {readFileSync} from 'node:fs';
+import {importDataset} from './db.js';
 const cfg=config();
 const app=createApp({config:cfg});
+if(cfg.referenceDataPath)importDataset(app.db,JSON.parse(readFileSync(cfg.referenceDataPath,'utf8')));
 app.server.listen(cfg.port,cfg.host,()=>console.log(`Sign-All backend: http://${cfg.host}:${cfg.port} | mode=${cfg.mode}`));
 let stopping=false;
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{if(stopping)return;stopping=true;await app.close();process.exit(0);});

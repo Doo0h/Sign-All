@@ -1,0 +1,7 @@
+{$SITE_DOMAIN} {
+    basic_auth {
+        {$TEAM_USER} {$TEAM_PASSWORD_HASH}
+    }
+    encode gzip zstd
+    reverse_proxy frontend:5173
+}

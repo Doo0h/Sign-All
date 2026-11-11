@@ -1,6 +1,8 @@
 # Sign-All Backend
 
-김두영 담당 백엔드·참조자료 DB의 실행 가능한 첫 구현입니다. Node.js **24.x**와 내장 SQLite를 사용합니다. 외부 패키지 설치는 필요 없습니다. 팀의 최종 기술 선택이 아닌 교체 가능한 구현 기준안입니다.
+Node.js **24.x**와 내장 SQLite를 사용합니다. 문서 추출에는 Python 3.11과 `python -m pip install -r requirements.txt`가 필요합니다. Docker 이미지는 이 의존성을 포함합니다. 기업·수어 참고 자료와 실제 AI 모드를 분리해 실행할 수 있습니다.
+
+Docker·서버 설정은 [배포 안내](../docs/server-deployment.md)를 따릅니다. `POST /api/documents/extract`는 세션 토큰, `application/octet-stream` 본문, URI 인코딩한 `X-File-Name` 헤더를 받습니다. 최대 5MB이며 PDF/HWP 5/HWPX/DOCX/TXT를 지원합니다. 원본은 저장하지 않으며 추출한 텍스트는 사용자가 검토한 후 별도 분석 요청에 사용합니다.
 
 ## 빠른 실행 — Windows PowerShell / macOS / Linux
 
