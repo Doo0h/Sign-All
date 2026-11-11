@@ -49,3 +49,10 @@ input[type=search]{width:100%;padding:13px 16px;border:1px solid #cbd8ce;border-
   .sidebar{padding-inline:24px}
   .content{padding-inline:clamp(20px,2vw,40px)}
 }
+@media(min-width:1151px){
+  .workspace{grid-template-columns:290px minmax(0,1fr)}
+  .sidebar{padding-inline:30px}
+}
+@media(min-width:721px) and (max-width:1150px){
+  .workspace{grid-template-columns:230px minmax(0,1fr)}
+}
