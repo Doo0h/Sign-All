@@ -17,13 +17,22 @@
 
 ## 현재 상태
 
-백엔드 첫 구현을 추가했습니다. Node.js 24.x와 SQLite로 참조자료 조회·임시 세션·분석/질문/피드백 요청 흐름을 실행할 수 있습니다. 기본 demo 모드는 가상 데이터와 규칙 응답이며 실제 AI가 아닙니다. 프론트 화면·실제 원본 샘플 검증·실제 AI 공급자 및 수어 외부 API 검증은 아직 완료하지 않았습니다.
+기업 탐색 → 문서 업로드·자기소개서 확인 → 질문 → 답변·피드백 흐름을 실행할 수 있습니다. Docker는 공식 기업 소개 3개와 수어 사전 링크 5개를 가져오며, 기본 AI는 규칙 기반 demo입니다. Groq 무료 외부 API 연결 옵션을 지원하지만 실제 키를 설정하기 전에는 모델을 호출하지 않습니다. 수어 링크는 문맥 의미가 미검증인 참고 후보입니다. 실제 입사지원 접수 서비스가 아닙니다.
+
+## Docker로 시작
+
+```powershell
+Copy-Item deploy.env.example .env
+docker compose up -d --build --wait
+```
+
+http://localhost:8080 에서 실행합니다. [서버 배포·브랜치별 구성](docs/server-deployment.md), [무료 AI 선택](docs/free-external-ai.md), [기업·수어 출처](docs/reference-catalog.md)를 확인하세요. 기존 `.env`가 있으면 덮어쓰지 않고 필요한 설정만 추가합니다.
 
 ## 폴더와 문서
 
 | 경로 | 내용 |
 |---|---|
-| frontend/ | 화면 구현 준비 |
+| frontend/ | 기업 카드·지원서 문서 업로드·텍스트 면접 연습·동일 출처 API 프록시 |
 | [backend/](backend/README.md) | 실행 가능한 백엔드·SQLite·테스트·데모 |
 | data/ | 원본·정제본 관리 지침 |
 | [docs/api-draft.md](docs/api-draft.md) | 내부 API 요청·응답 설계 제안 |

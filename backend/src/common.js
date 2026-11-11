@@ -30,7 +30,7 @@ export function config(env = process.env) {
   const aiProvider = env.AI_PROVIDER || 'external';
   if (!['external','ollama','groq'].includes(aiProvider)) throw new Error('AI_PROVIDER must be external, groq or ollama');
   return {
-    referenceMode: env.REFERENCE_MODE || mode,
+    referenceMode: env.REFERENCE_MODE,
     trustProxy: env.TRUST_PROXY==='true',
     referenceDataPath: env.REFERENCE_DATA_PATH,
     python: env.PYTHON_BIN || (process.platform==='win32'?'python':'python3'),

@@ -6,7 +6,9 @@ export const documentTypes = ['pdf','hwp','hwpx','docx','txt'];
 export function extractDocument(buffer, extension, python='python') {
   if (!documentTypes.includes(extension)) fail(415,'UNSUPPORTED_FILE_TYPE','PDF, HWP, HWPX, DOCX, TXT 파일을 선택해 주세요.');
   return new Promise((resolve,reject) => {
-    const child=spawn(python,[fileURLToPath(new URL('../scripts/extract-document.py',import.meta.url)),extension],{windowsHide:true,stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONIOENCODING:'utf-8'}});
+    const parserEnv={PATH:process.env.PATH,PYTHONIOENCODING:'utf-8',PYTHONDONTWRITEBYTECODE:'1',LANG:'C.UTF-8'};
+    for(const key of ['SystemRoot','TEMP','TMP'])if(process.env[key])parserEnv[key]=process.env[key];
+    const child=spawn(python,[fileURLToPath(new URL('../scripts/extract-document.py',import.meta.url)),extension],{windowsHide:true,stdio:['pipe','pipe','pipe'],env:parserEnv});
     let output='', done=false;
     const finish=(error,value)=>{if(done)return;done=true;clearTimeout(timer);error?reject(error):resolve(value);};
     const timer=setTimeout(()=>{child.kill();finish(new ApiError(422,'DOCUMENT_TIMEOUT','문서 처리 시간이 초과되었습니다. 텍스트로 붙여 넣어 주세요.'));},15000);

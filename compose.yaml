@@ -29,7 +29,7 @@ services:
     volumes:
       - reference-db:/app/backend/var
       - ${REFERENCE_DATA_FILE:-./data/reference-starter.json}:/app/data/reference-starter.json:ro
-    tmpfs: [/tmp:size=32m,mode=1777]
+    tmpfs: ["/tmp:size=32m,mode=1777"]
   frontend:
     build:
       context: ${FRONTEND_CONTEXT:-.}
