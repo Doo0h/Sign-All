@@ -16,6 +16,12 @@ test('curated references work with demo AI without fabricated NCS or video claim
  const companies=await get('/api/companies');assert.equal(companies.total,3);assert.ok(companies.items.every(c=>c.practiceOnly&&c.sourcePageUrl.startsWith('https://')));
  const sign=await get('/api/signs?keyword='+encodeURIComponent('경험'));assert.equal(sign.matchStatus,'candidate');assert.equal(sign.items[0].semanticStatus,'unreviewed');assert.equal(sign.items[0].videoUrl,undefined);
  const token=(await post('/api/session',{})).sessionToken;
+ const catalog=await get('/api/signs/catalog');assert.equal(catalog.total,21);assert.equal(catalog.items.length,12);
+ const page2=await get('/api/signs/catalog?offset=12');assert.equal(page2.items.length,9);assert.ok(page2.items.every(s=>!catalog.items.some(first=>first.id===s.id)));
+ const companySign=await get('/api/signs/catalog?q='+encodeURIComponent('회사'));assert.equal(companySign.total,1);assert.equal(companySign.items[0].originalId,'11237');
+ assert.equal((await get('/api/signs/catalog?q=missing')).total,0);
+ assert.equal((await fetch(base+'/api/signs/catalog?offset=-1')).status,400);
+ assert.equal((await fetch(base+'/api/signs/catalog?unexpected=true')).status,400);
  const analysis=await post('/api/resume/analyze',{resumeText:'가상 테스트 경험'},token);
  const questions=await post('/api/interview/questions',{companyId:'naver',jobId:'backend-practice',analysisId:analysis.analysisId},token);
  assert.ok(questions.questions.length);assert.ok(questions.questions[0].references.some(r=>r.id==='team-practice-rubric'));

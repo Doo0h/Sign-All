@@ -26,6 +26,31 @@ function h(tag, props = {}, ...kids) {
 const say = (msg = '') => { $('status').textContent = msg; };
 const fail = (msg = '') => { $('error').textContent = msg; };
 
+// 면접 입력을 유지한 채 독립적으로 사전 원문을 탐색한다.
+$('open-sign-library')?.addEventListener('click', () => {
+  const dialog=h('dialog',{'aria-label':'수어 자료실',className:'sign-library'});
+  const results=h('div',{className:'sign-library-results'}),status=h('p',{role:'status'});
+  const query=h('input',{type:'search',maxLength:100,'aria-label':'수어 검색어',placeholder:'회사, 준비, 경험 등'});
+  const more=h('button',{type:'button'},'더 보기');
+  let offset=0,version=0;
+  async function search(append=false){
+    const request=++version;more.disabled=true;status.textContent='자료를 불러오는 중입니다.';
+    if(!append){offset=0;results.replaceChildren();}
+    try{
+      const data=await api(`/api/signs/catalog?q=${encodeURIComponent(query.value.trim())}&offset=${offset}`);
+      if(request!==version || !dialog.isConnected)return;
+      for(const item of data.items)results.append(h('article',{},h('h3',{},item.term),h('p',{},'문맥 적합성 미검토 · 원문에서 동작을 확인하세요.'),h('a',{href:item.sourcePageUrl,target:'_blank',rel:'noopener noreferrer'},'한국수어사전 원문 열기 ↗')));
+      offset+=data.items.length;status.textContent=`검색 결과 ${data.total}개 · ${offset}개 표시`;
+      more.hidden=offset>=data.total;
+    }catch(e){if(request===version)status.textContent=e.message;}finally{if(request===version)more.disabled=false;}
+  }
+  const form=h('form',{onsubmit:e=>{e.preventDefault();search();}},query,h('button',{type:'submit'},'검색'));
+  more.addEventListener('click',()=>search(true));
+  dialog.append(h('button',{type:'button',onclick:()=>dialog.close()},'닫기'),h('h2',{},'면접 준비 수어 자료실'),h('p',{},'국립국어원 한국수어사전의 단어별 참고 링크입니다. 문장 전체 번역이 아니며, 영상은 원문 사이트에서 확인합니다.'),form,status,results,more);
+  dialog.addEventListener('close',()=>{version++;dialog.remove();});
+  document.body.append(dialog);dialog.showModal();query.focus();search();
+});
+
 class ApiError extends Error { constructor(m, status) { super(m); this.status = status; } }
 
 async function api(path, body, file) {
