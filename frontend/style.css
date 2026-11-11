@@ -43,7 +43,8 @@ input[type=search]{width:100%;padding:13px 16px;border:1px solid #cbd8ce;border-
 .sign-disclaimer{font-size:11px;color:var(--muted);margin:16px 0 0}
 /* Reserve scroll and connection-status space during initial loading. */
 html{overflow-y:scroll}
-#demo-banner{min-height:60px;display:flex;align-items:center}
+#demo-banner{display:none!important}
+.hero:after{display:none}
 
 /* Use the whole viewport; retain only readable inner gutters. */
 .workspace{width:100%;max-width:none;margin:0}
