@@ -276,7 +276,7 @@ function S3() {
   const list = st.questions.length
     ? h('ul', { className: 'q' }, st.questions.map((q, i) => h('li', {},
     h('p', {}, q.text),
-    h('div',{className:'references'},(q.references||[]).filter(r=>r.url?.startsWith('https://')).map(r=>h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},r.name+' ↗'))),
+    h('div',{className:'references'},(q.references||[]).filter(r=>r.id!=='team-practice-rubric' && r.url?.startsWith('https://')).map(r=>h('a',{href:r.url,target:'_blank',rel:'noopener noreferrer'},r.name+' ↗'))),
         h('p', {}, st.feedbacks[q.questionId] ? '✓ 피드백 받음' : '○ 미답변'),
         h('button', { onclick: () => { st.current = i; go('S4'); } }, '연습하기'))))
     : h('p', {}, '생성된 질문이 없습니다. 다시 만들어 주세요.');
