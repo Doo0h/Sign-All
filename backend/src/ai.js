@@ -86,8 +86,9 @@ export function createAI(cfg, fetcher=fetch) {
         body:JSON.stringify({model:cfg.aiModel,messages:[
           {role:'system',content:buildSystemPrompt(kind)},
           {role:'user',content:JSON.stringify(input)}
-        ],temperature:0.2,max_tokens:1500,...(local?{response_format:{type:'json_object'}}:{})})
+        ],temperature:0.2,...(cfg.aiProvider==='groq'?{max_completion_tokens:2048}:{max_tokens:1500}),...((local||cfg.aiProvider==='groq')?{response_format:{type:'json_object'}}:{})})
       });
+      if(response.status===429)fail(503,'AI_PROVIDER_LIMIT','AI 제공자의 무료 사용량 또는 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.',undefined,true);
       if(!response.ok) fail(502,'UPSTREAM_FAILED','외부 AI 요청이 실패했습니다.',undefined,response.status>=500 || response.status===429);
       if(!response.body) throw new Error('Empty body');
       const reader=response.body.getReader(); let raw=''; let bytes=0;
