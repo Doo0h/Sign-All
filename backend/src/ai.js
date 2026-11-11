@@ -45,6 +45,7 @@ export function buildSystemPrompt(kind) {
 const isText = (x,max=2000) => typeof x==='string' && x.trim().length>0 && x.length<=max;
 const strings = (x,max=10) => Array.isArray(x) && x.length<=max && x.every(v=>isText(v,500));
 export function validateAI(kind, r, input) {
+  if (!Object.hasOwn(contracts,kind)) throw new Error('Unsupported AI kind');
   let ok = r && typeof r==='object' && !Array.isArray(r);
   if (kind==='analyze') ok = ok && isText(r.summary) && strings(r.keywords) && Array.isArray(r.competencies) && r.competencies.length<=10 && r.competencies.every(v=>v && isText(v.name,100) && isText(v.evidence,1000) && input.resumeText.includes(v.evidence));
   const allowed = new Set(input.referenceIds || []);
@@ -63,22 +64,29 @@ function demo(kind,input) {
   return {strengths:['[데모] 답변 입력과 질문 연결을 확인했습니다.'],improvements:['[데모] 실제 AI 평가가 아닙니다.'],suggestion:'상황·본인의 행동·결과를 구분하여 답변을 구성해 보세요.',referenceIds:input.referenceIds};
 }
 export function createAI(cfg, fetcher=fetch) {
+  const local = cfg.aiProvider === 'ollama';
+  const endpoint = local ? (cfg.aiUrl || 'http://127.0.0.1:11434/v1/chat/completions') : cfg.aiUrl;
   if(cfg.mode==='live') {
     let u;
-    try {u=new URL(cfg.aiUrl);} catch {throw new Error('live 모드는 AI_API_URL 설정이 필요합니다.');}
-    if(u.protocol!=='https:' || u.username || u.password || !cfg.aiKey || !cfg.aiModel) throw new Error('HTTPS AI_API_URL, AI_API_KEY, AI_MODEL 설정을 확인하세요.');
+    try {u=new URL(endpoint);} catch {throw new Error('live 모드는 AI_API_URL 설정이 필요합니다.');}
+    if (local) {
+      // 로컬 실행만 허용합니다. localhost DNS나 LAN/외부 HTTP로 예외를 넓히지 않습니다.
+      if (u.origin !== 'http://127.0.0.1:11434' || u.pathname !== '/v1/chat/completions' || u.search || u.hash || u.username || u.password || !cfg.aiModel || /cloud/i.test(cfg.aiModel))
+        throw new Error('Ollama는 127.0.0.1:11434의 로컬 모델과 /v1/chat/completions만 지원합니다.');
+    } else if(u.protocol!=='https:' || u.username || u.password || !cfg.aiKey || !cfg.aiModel) throw new Error('HTTPS AI_API_URL, AI_API_KEY, AI_MODEL 설정을 확인하세요.');
   }
   return async (kind,input) => {
+    if (!Object.hasOwn(contracts,kind)) throw new Error('Unsupported AI kind');
     if(cfg.mode==='demo') return validateAI(kind,demo(kind,input),input);
     let response;
     try {
-      response=await fetcher(cfg.aiUrl,{
+      response=await fetcher(endpoint,{
         method:'POST',redirect:'error',signal:AbortSignal.timeout(cfg.aiTimeout),
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${cfg.aiKey}`},
+        headers:{'Content-Type':'application/json',...(!local?{'Authorization':`Bearer ${cfg.aiKey}`}:{})},
         body:JSON.stringify({model:cfg.aiModel,messages:[
           {role:'system',content:buildSystemPrompt(kind)},
           {role:'user',content:JSON.stringify(input)}
-        ],temperature:0.2,max_tokens:1500})
+        ],temperature:0.2,max_tokens:1500,...(local?{response_format:{type:'json_object'}}:{})})
       });
       if(!response.ok) fail(502,'UPSTREAM_FAILED','외부 AI 요청이 실패했습니다.',undefined,response.status>=500 || response.status===429);
       if(!response.body) throw new Error('Empty body');
