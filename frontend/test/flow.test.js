@@ -31,6 +31,25 @@ async function setup(t, intercept) {
   return {w,d,wait,click,input,screen,start,questions};
 }
 
+test('sign library searches and pages without clearing interview input',async t=>{
+ const calls=[];
+ const h=await setup(t,(url)=>{
+   if(!url.startsWith('/api/signs/catalog'))return;
+   calls.push(url);const offset=new URL(url,'http://localhost').searchParams.get('offset');
+   return Promise.resolve(new Response(JSON.stringify({data:{items:[{term:offset==='0'?'회사':'준비',sourcePageUrl:'https://sldict.korean.go.kr/'}],total:2}})));
+ });
+ h.w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+ h.w.HTMLDialogElement.prototype.close=function(){this.dispatchEvent(new h.w.Event('close'));};
+ await h.start();h.input('resume','작성 중인 경험');h.click('수어 자료실');
+ await h.wait(()=>h.d.querySelector('dialog article'));
+ h.click('더 보기');await h.wait(()=>h.d.querySelectorAll('dialog article').length===2);
+ assert.ok(calls[1].includes('offset=1'));
+ const query=h.d.querySelector('dialog input');query.value='회사';h.click('검색');
+ await h.wait(()=>calls.length===3 && h.d.querySelectorAll('dialog article').length===1);
+ assert.ok(calls[2].includes(encodeURIComponent('회사')));
+ h.click('닫기');assert.equal(h.d.querySelector('dialog'),null);assert.equal(h.d.getElementById('resume').value,'작성 중인 경험');
+});
+
 test('실제 demo HTTP와 DOM 전체 흐름, 수어 없음, 답변 수정, 종료', async t => {
   const h=await setup(t);
   await h.questions(); h.click('연습하기'); await h.screen('S4');
