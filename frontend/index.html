@@ -1,22 +1,30 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign-All 면접 연습</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12675b"><title>Sign-All · 나의 속도로 준비하는 면접</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <a class="skip" href="#main">본문으로 건너뛰기</a>
-  <div id="demo-banner" class="banner" hidden>지금 보이는 내용은 시연용 데이터입니다.</div>
-  <header>
-    <h1>Sign-All 면접 연습</h1>
-    <p id="step" aria-live="polite"></p>
-  </header>
-  <main id="main"></main>
-  <p id="status" role="status" aria-live="polite"></p>
-  <p id="error" role="alert"></p>
-  <script type="module" src="app.js"></script>
-  <p>@Jimo_gang</p>
-</body>
-</html>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="topbar">
+<a class="brand" href="./" aria-label="Sign-All 처음으로"><span class="brand-icon" aria-hidden="true">S↗</span>Sign-All<span>.</span></a>
+<span class="top-caption">모두에게 열린 면접 연습</span><span class="text-badge">텍스트 중심의 편안한 연습</span>
+</header>
+<div class="workspace">
+<aside class="sidebar" aria-label="연습 단계">
+<p class="eyebrow">MY INTERVIEW</p><h1>나의 속도로,<br>한 걸음씩.</h1>
+<p class="sidebar-intro">경험을 정리하고<br>나만의 답변을 준비해 보세요.</p>
+<ol id="progress" class="progress"></ol>
+<div class="side-note"><span aria-hidden="true">Aa</span><strong>소리 없이도 충분해요.</strong><p>질문부터 피드백까지<br>모든 과정을 글로 확인하세요.</p></div>
+<p class="sidebar-foot">YOUR STORY, YOUR PACE.</p>
+</aside>
+<div class="content">
+<div class="content-top"><span>면접 연습 공간</span><span id="step" aria-live="polite"></span></div>
+<div id="demo-banner" class="banner" hidden>시연 모드 · 가상 자료와 규칙 기반 피드백을 사용합니다.</div>
+<main id="main" tabindex="-1"></main>
+<div class="messages"><p id="status" role="status" aria-live="polite"></p><p id="error" role="alert"></p></div>
+<footer>Sign-All <span>나의 이야기가 더 잘 전해질 수 있도록.</span></footer>
+</div></div>
+<script type="module" src="app.js"></script>
+</body></html>

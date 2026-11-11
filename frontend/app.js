@@ -9,13 +9,15 @@ const fresh = () => ({
   questions: [], answers: {}, feedbacks: {}, signs: {}, current: 0,
 });
 let st = fresh();
+let busy = false;
 
 const $ = (id) => document.getElementById(id);
 function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
     if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (v !== false && v != null) el[k] = v;
+    else if (k.startsWith('aria-') || k === 'role') el.setAttribute(k, v);
+    else if (v != null) el[k] = v;
   }
   el.append(...kids.flat().filter((k) => k != null && k !== false));
   return el;
@@ -30,6 +32,7 @@ async function api(path, body) {
   try {
     res = await fetch(BASE + path, {
       method: body === undefined ? 'GET' : 'POST',
+      signal: AbortSignal.timeout(130000),
       headers: {
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(st.token ? { 'X-Session-Token': st.token } : {}),
@@ -42,7 +45,7 @@ async function api(path, body) {
   const json = await res.json().catch(() => ({}));
   if (json.meta?.isDemo) { st.isDemo = true; $('demo-banner').hidden = false; }
   if (!res.ok) {
-    if (res.status === 401 || res.status === 410) { st.screen = 'EXPIRED'; render(); }
+    if (res.status === 401 || res.status === 410) { st = fresh(); st.screen = 'EXPIRED'; render(); }
     // D5 미확정: 백엔드 message 필드가 있으면 그대로 쓰고, 없으면 공통 문구
     throw new ApiError(json.error?.message || '요청을 처리하지 못했습니다. 입력하신 내용은 그대로 남아 있습니다.', res.status);
   }
@@ -51,11 +54,14 @@ async function api(path, body) {
 
 // 버튼 중복 클릭 방지 + 로딩 문구 + 오류 처리
 async function run(btn, loading, fn) {
-  if (btn.disabled) return;
+  if (btn.disabled || busy) return;
+  busy = true;
+  const locked = [...document.querySelectorAll('#main button, #main textarea, #main select')].map(el => [el, el.disabled]);
+  locked.forEach(([el]) => { el.disabled = true; });
   btn.disabled = true; fail(); say(loading);
   $('main').setAttribute('aria-busy', 'true');
   try { await fn(); say(); } catch (e) { say(); if (st.screen !== 'EXPIRED') fail(e.message); }
-  finally { btn.disabled = false; $('main').removeAttribute('aria-busy'); }
+  finally { busy = false; locked.forEach(([el, disabled]) => { if (el.isConnected) el.disabled = disabled; }); btn.disabled = false; $('main').removeAttribute('aria-busy'); if ($('generate')) $('generate').disabled = !st.analysis; }
 }
 
 function go(screen) {
@@ -65,10 +71,17 @@ function go(screen) {
 function render() {
   const main = $('main');
   main.replaceChildren();
+  main.dataset.screen = st.screen;
   const idx = Object.keys(STEPS).indexOf(st.screen);
   $('step').textContent = idx >= 0 ? `${idx + 1} / 6 단계 · ${STEPS[st.screen]}` : '';
+  const stages = ['시작 안내', '기업·직무', '자기소개서', '질문·답변', '연습 완료'];
+  const current = ({ S0: 0, S1: 1, S2: 2, S3: 3, S4: 3, S5: 4 })[st.screen];
+  $('step').textContent = current == null ? '연습 다시 시작' : `${current + 1} / 5 단계`;
+  $('progress').replaceChildren(...stages.map((label, i) =>
+    h('li', { className: i === current ? 'active' : i < current ? 'done' : '', ...(i === current ? { 'aria-current': 'step' } : {}) },
+      h('span', { className: 'number', 'aria-hidden': 'true' }, i < current ? '✓' : String(i + 1)), label)));
   const view = { S0, S1, S2, S3, S4, S5, EXPIRED }[st.screen]();
-  main.append(...view);
+  main.append(...view.filter(node => node != null && node !== false));
   main.querySelector('h2')?.focus(); // 화면이 바뀌면 제목으로 포커스
 }
 const title = (t) => h('h2', { tabIndex: -1 }, t);
@@ -76,16 +89,29 @@ const title = (t) => h('h2', { tabIndex: -1 }, t);
 // ---------- S0 시작
 function S0() {
   const btn = h('button', { onclick: () => run(btn, '시작하는 중…', async () => {
-    const s = await api('/api/session', {});
-    st.token = s.sessionToken;
+    if (!st.token) {
+      const s = await api('/api/session', {});
+      st.token = s.sessionToken;
+    }
     await loadLists();
     go('S1');
   }) }, '연습 시작');
+  btn.className = 'primary';
+  btn.textContent = '내 면접 연습 시작하기 →';
+  const feature = (n, heading, body) => h('div', { className: 'feature' },
+    h('span', { className: 'feature-no' }, n), h('h3', {}, heading), h('p', {}, body));
   return [
-    title('시작'),
-    h('p', {}, '기업·직무를 고르고 자기소개서를 분석해 예상 면접 질문으로 텍스트 답변을 연습합니다.'),
-    h('p', { className: 'dummy' }, '[더미 문구 · D8 확정 필요] 입력하신 자기소개서와 답변은 AI 분석에 사용됩니다. 서버에 영구 저장되지 않습니다.'),
-    btn,
+    h('div', { className: 'hero' },
+      h('p', { className: 'eyebrow' }, 'READY AT YOUR OWN PACE'),
+      title('당신의 경험이, 더 잘 전해지도록.'),
+      h('p', { className: 'lead' }, '자기소개서에서 시작해 나만의 답변까지. 글로 읽고, 천천히 생각하고, 편안하게 면접을 연습하세요.'),
+      btn, h('p', { className: 'hero-caption' }, '회원가입 없이 · 텍스트로 답변 · 나의 속도에 맞춰'),
+      h('div', { className: 'hero-mark', 'aria-hidden': 'true' }, '↗')),
+    h('div', { className: 'feature-grid' },
+      feature('01', '경험에서 찾는 강점', '자기소개서를 정리하고 핵심 키워드와 역량을 확인해요.'),
+      feature('02', '한 질문씩 차근차근', '기업·직무를 선택하고 관련 질문에 글로 답해요.'),
+      feature('03', '답변을 더 구체적으로', '잘한 점과 보완할 점을 읽고 다음 연습을 준비해요.')),
+    h('p', { className: 'privacy-note' }, '입력한 자기소개서와 답변은 서버에 영구 저장되지 않으며, 연습 종료 시 화면에서 지워집니다. 이름·연락처 등 개인정보는 제외해 주세요. 수어 자료는 질문의 핵심 단어를 이해하기 위한 참고 자료입니다.'),
   ];
 }
 
@@ -101,7 +127,7 @@ function S1() {
     h('option', { value: '' }, '선택해 주세요'),
     ...items.map((i) => h('option', { value: i.id, selected: i.id === cur }, i.name)),
   ];
-  const next = h('button', { disabled: !(st.companyId && st.jobId), onclick: () => go('S2') }, '다음');
+  const next = h('button', { className: 'primary', disabled: !(st.companyId && st.jobId), onclick: () => go('S2') }, '자기소개서 작성하기 →');
   const sync = () => { next.disabled = !(st.companyId && st.jobId); };
   const confirmReset = () => !hasFeedback() || confirm('기업·직무를 바꾸면 지금까지 만든 질문과 받은 피드백이 모두 지워집니다. 계속할까요?');
   const pick = (key) => (e) => {
@@ -110,26 +136,27 @@ function S1() {
     st[key] = e.target.value; resetQuestions(); sync();
   };
   return [
-    title('기업·직무 선택'),
+    title('어떤 면접을 준비하고 있나요?'),
+    h('p', { className: 'lead' }, '연습할 기업과 직무를 선택해 주세요. 선택한 자료를 바탕으로 질문을 준비합니다.'),
     st.companies.length ? null : h('p', {}, '불러올 수 있는 기업 정보가 없습니다.'),
     st.jobs.length ? null : h('p', {}, '불러올 수 있는 직무 정보가 없습니다.'),
     h('label', { htmlFor: 'company' }, '기업'),
     h('select', { id: 'company', onchange: pick('companyId') }, opts(st.companies, st.companyId)),
     h('label', { htmlFor: 'job' }, '직무'),
     h('select', { id: 'job', onchange: pick('jobId') }, opts(st.jobs, st.jobId)),
-    h('p', { className: 'note' }, '기업 정보는 API가 준 이름만 표시합니다.'),
+    h('p', { className: 'note' }, '시연 모드에서는 가상 기업과 연습용 직무가 표시됩니다.'),
     next,
   ];
 }
 const hasFeedback = () => Object.keys(st.feedbacks).length > 0;
-function resetQuestions() { st.questions = []; st.answers = {}; st.feedbacks = {}; st.current = 0; }
+function resetQuestions() { st.questions = []; st.answers = {}; st.feedbacks = {}; st.signs = {}; st.current = 0; }
 
 // ---------- S2 자기소개서
 function S2() {
-  const ta = h('textarea', { id: 'resume', maxLength: 10000, value: st.resumeText });
+  const ta = h('textarea', { id: 'resume', maxLength: 10000, value: st.resumeText, placeholder: '어떤 경험을 했나요? 맡았던 역할, 문제를 해결한 과정, 배운 점을 자유롭게 적어 주세요.' });
   const count = h('p', { id: 'count' }, `${st.resumeText.length} / 10000자`);
   const result = h('section', { 'aria-live': 'polite' });
-  const gen = h('button', { disabled: !st.analysis }, '예상 질문 만들기');
+  const gen = h('button', { id: 'generate', className: 'primary', disabled: !st.analysis }, '예상 질문 만들기 →');
   const showAnalysis = () => {
     result.replaceChildren();
     if (!st.analysis) return;
@@ -151,17 +178,20 @@ function S2() {
   const analyze = h('button', { onclick: () => {
     if (!st.resumeText.trim()) { fail('자기소개서를 입력해 주세요.'); ta.focus(); return; }
     run(analyze, '자기소개서를 분석하고 있습니다. 잠시 기다려 주세요.', async () => {
+      st.analysis = null; resetQuestions(); gen.disabled = true; showAnalysis();
       st.analysis = await api('/api/resume/analyze', { resumeText: st.resumeText });
       showAnalysis(); gen.disabled = false; result.querySelector('h3').tabIndex = -1; result.querySelector('h3').focus();
     });
   } }, '분석하기');
   gen.addEventListener('click', () => run(gen, '예상 질문을 만들고 있습니다.', async () => {
+    resetQuestions();
     const r = await api('/api/interview/questions', { companyId: st.companyId, jobId: st.jobId, analysisId: st.analysis.analysisId });
     resetQuestions(); st.questions = r.questions; go('S3');
   }));
   showAnalysis();
   return [
-    title('자기소개서 입력·분석'),
+    title('당신의 경험을 들려주세요.'),
+    h('p', { className: 'lead' }, '자기소개서를 붙여 넣거나 경험을 직접 적어 주세요. 분석 결과를 확인한 뒤 질문을 만들 수 있어요.'),
     summaryLine(),
     h('label', { htmlFor: 'resume' }, '자기소개서'), ta, count,
     h('button', { onclick: () => go('S1') }, '이전'), analyze, gen, result,
@@ -185,7 +215,7 @@ function S3() {
     : h('p', {}, '생성된 질문이 없습니다. 다시 만들어 주세요.');
   const end = h('button', { onclick: () => run(end, '종료하는 중…', endSession) }, '연습 종료');
   return [
-    title('질문 목록'), summaryLine(), list,
+    title('한 질문씩 연습해 볼까요?'), h('p', { className: 'lead' }, '나의 경험을 구체적으로 전달하는 데 집중해 보세요.'), summaryLine(), list,
     h('button', { onclick: back('S1', '기업·직무를 바꾸면 지금까지 만든 질문과 받은 피드백이 모두 지워집니다. 계속할까요?') }, '기업·직무 변경'),
     h('button', { onclick: back('S2', '자기소개서를 수정하면 분석, 질문, 받은 피드백이 모두 지워집니다. 계속할까요?') }, '자기소개서 수정'),
     end,
@@ -198,9 +228,9 @@ function S4() {
   const qid = q.questionId;
   const signBox = h('div', { 'aria-live': 'polite' });
   const fbBox = h('section', { 'aria-live': 'polite' });
-  const ta = h('textarea', { id: 'answer', maxLength: 5000, value: st.answers[qid] ?? '' });
-  const count = h('p', {}, `${ta.value.length} / 5000자`);
-  ta.addEventListener('input', () => { st.answers[qid] = ta.value; count.textContent = `${ta.value.length} / 5000자`; });
+  const ta = h('textarea', { id: 'answer', maxLength: 5000, value: st.answers[qid] ?? '', placeholder: '상황 → 내가 한 행동 → 결과 순서로 경험을 적어 보세요.' });
+  const count = h('p', { className: 'counter' }, `${ta.value.length} / 5000자`);
+  ta.addEventListener('input', () => { st.answers[qid] = ta.value; delete st.feedbacks[qid]; fbBox.replaceChildren(); count.textContent = `${ta.value.length} / 5000자`; });
 
   const showSign = (kw) => {
     const box = h('div', { id: 'sign-' + kw });
@@ -219,7 +249,7 @@ function S4() {
   const kwBtns = (q.keywords || []).map((kw) => {
     const b = h('button', { onclick: () => run(b, `'${kw}' 수어 자료를 찾고 있습니다.`, async () => {
       try { st.signs[kw] = await api('/api/signs?keyword=' + encodeURIComponent(kw)); } catch { st.signs[kw] = 'error'; }
-      b.nextElementSibling.replaceWith(showSign(kw));
+      if (b.isConnected && st.screen === 'S4') b.nextElementSibling.replaceWith(showSign(kw));
     }) }, `'${kw}' 수어 자료 보기`);
     return [b, showSign(kw)];
   });
@@ -235,7 +265,7 @@ function S4() {
       st.current < st.questions.length - 1 ? h('button', { onclick: () => { st.current++; go('S4'); } }, '다음 질문') : null);
     fbBox.querySelector('h3').focus();
   };
-  const fb = h('button', { onclick: () => {
+  const fb = h('button', { className: 'primary', onclick: () => {
     if (!ta.value.trim()) { fail('답변을 입력해 주세요.'); ta.focus(); return; }
     if (st.feedbacks[qid] && !confirm('이미 받은 피드백이 있습니다. 다시 받을까요?')) return; // D9 임시: 재요청 허용
     run(fb, '답변을 검토하고 있습니다.', async () => {
@@ -247,7 +277,7 @@ function S4() {
   return [
     title('질문 연습'),
     h('p', {}, `${st.current + 1} / ${st.questions.length}`),
-    h('p', {}, h('strong', {}, q.text)),
+    h('p', { className: 'question-text' }, h('strong', {}, q.text)),
     h('section', {}, h('h3', {}, '관련 수어 자료'), kwBtns.length ? kwBtns.flat() : h('p', {}, '이 질문에는 조회할 키워드가 없습니다.'), signBox),
     h('section', {}, h('label', { htmlFor: 'answer' }, '내 답변'), ta, count, fb),
     fbBox,
@@ -257,12 +287,12 @@ function S4() {
 
 // ---------- S5 종료 / 만료
 async function endSession() {
-  try { await api('/api/session/end', {}); } catch { /* 이미 만료/종료여도 화면 상태는 삭제 */ }
+  try { await api('/api/session/end', {}); } catch (e) { if (![401, 410].includes(e.status)) throw e; }
   st = fresh(); $('demo-banner').hidden = true; go('S5');
 }
 function S5() {
-  return [title('연습 종료'), h('p', {}, '연습이 끝났습니다. 입력한 내용이 화면에서 지워졌습니다.'),
-    h('button', { onclick: () => go('S0') }, '처음부터 다시')];
+  return [title('오늘도 한 걸음 나아갔어요.'), h('p', { className: 'lead' }, '면접 연습을 마쳤습니다. 입력한 내용은 화면에서 지워졌어요. 준비가 되면 새로운 연습을 시작해 보세요.'),
+    h('button', { className: 'primary', onclick: () => go('S0') }, '새로운 연습 시작하기 →')];
 }
 function EXPIRED() {
   return [title('세션 만료'), h('p', {}, '연습 시간이 만료되었습니다. 새로 시작하면 분석과 질문을 다시 만들어야 합니다.'),
@@ -276,3 +306,12 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 render();
+// 입력 전에 현재 연결 모드를 확인한다. 실패 시 시작 버튼으로 재시도할 수 있다.
+api('/api/health').then(info => {
+  $('demo-banner').hidden = false;
+  $('demo-banner').textContent = info.aiMode === 'demo-rule-based'
+    ? '시연 모드 · 가상 자료와 규칙 기반 응답을 사용합니다. 실제 AI 분석이 아닙니다.'
+    : info.aiMode === 'local-model'
+      ? '로컬 AI 모드 · 이 PC에 설치된 모델로 처리합니다.'
+      : '외부 AI 모드 · 입력 내용이 설정된 AI 공급자로 전송됩니다.';
+}).catch(() => { fail('서버 연결을 확인해 주세요. 서버 실행 후 연습 시작을 눌러 다시 시도할 수 있습니다.'); });
