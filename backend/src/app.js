@@ -66,7 +66,7 @@ export function createApp(options={}) {
       const url=new URL(req.url,'http://localhost');
       const path=url.pathname;
       let result;
-      if(req.method==='GET' && path==='/api/health')result={status:'ok',mode:cfg.mode,aiMode:cfg.mode==='demo'?'demo-rule-based':'external',persistentUserData:false};
+      if(req.method==='GET' && path==='/api/health')result={status:'ok',mode:cfg.mode,aiMode:cfg.mode==='demo'?'demo-rule-based':cfg.aiProvider==='ollama'?'local-model':'external',persistentUserData:false};
       else if(req.method==='POST' && path==='/api/session'){
         const b=await body(req);fields(b,[]);clean();
         if(sessions.size>=cfg.maxSessions)fail(503,'SESSION_CAPACITY','세션 한도에 도달했습니다.',undefined,true);
@@ -95,7 +95,7 @@ export function createApp(options={}) {
         const s=getSession(req),b=await body(req);fields(b,['resumeText']);const resumeText=text(b.resumeText,'resumeText',10000);
         if(s.analysisBusy || s.questionsBusy)fail(409,'CONTEXT_BUSY','현재 요청이 완료된 뒤 다시 시도해 주세요.',undefined,true);
         s.analysisBusy=true;s.analysis=null;s.questions=[];s.revision++;
-        try {const output=await gate('analyze',{resumeText});s.analysis={id:randomUUID(),...output};result={analysisId:s.analysis.id,...output};}finally{s.analysisBusy=false;}
+        try {const output=await gate('analyze',{resumeText});getSession(req);s.analysis={id:randomUUID(),...output};result={analysisId:s.analysis.id,...output};}finally{s.analysisBusy=false;}
       } else if(req.method==='POST' && path==='/api/interview/questions'){
         const s=getSession(req),b=await body(req);fields(b,['companyId','jobId','analysisId']);
         const company=find('companies',id(b.companyId,'companyId')),job=find('jobs',id(b.jobId,'jobId'));
@@ -107,6 +107,7 @@ export function createApp(options={}) {
         s.questionsBusy=true;s.questions=[];s.revision++;
         try {
           const output=await gate('questions',{company,job,units,analysis:s.analysis,referenceIds});
+          getSession(req);
           s.questions=output.questions.map(q=>({...q,questionId:randomUUID(),jobId:job.id,companyId:company.id}));
           result={questions:s.questions.map(q=>({...q,references:referenceObjects(q.referenceIds)}))};
         }finally{s.questionsBusy=false;}
@@ -118,6 +119,7 @@ export function createApp(options={}) {
         if(s.analysisBusy || s.questionsBusy)fail(409,'CONTEXT_BUSY','질문 갱신이 끝난 뒤 다시 시도해 주세요.',undefined,true);
         const revision=s.revision;
         const output=await gate('feedback',{questionText:question.text,answerText,job:repo.get('jobs',question.jobId),units:repo.units(question.jobId),referenceIds:question.referenceIds});
+        getSession(req);
         if(revision!==s.revision)fail(409,'CONTEXT_CHANGED','질문이 변경되었습니다. 현재 질문으로 다시 답변해 주세요.');
         result={strengths:output.strengths,improvements:output.improvements,suggestion:output.suggestion,references:referenceObjects(output.referenceIds)};
       } else fail(404,'ROUTE_NOT_FOUND','해당 경로 또는 메서드를 찾을 수 없습니다.');

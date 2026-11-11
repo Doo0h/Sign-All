@@ -9,7 +9,8 @@ import {openDatabase,importDataset,demoData,repository} from '../src/db.js';
 import {createAI,validateAI} from '../src/ai.js';
 async function setup(t,overrides={},ai) {
  const app=createApp({config:{...config({}),dbPath:':memory:',rateLimit:1000,...overrides},...(ai?{ai}:{})});
- await new Promise(r=>app.server.listen(0,'127.0.0.1',r));t.after(()=>app.close());
+ t.after(()=>app.close());
+ await new Promise((resolve,reject)=>{app.server.once('error',reject);app.server.listen(0,'127.0.0.1',()=>{app.server.off('error',reject);resolve();});});
  const base=`http://127.0.0.1:${app.server.address().port}`;
  const request=async(path,body,token,extra={})=>{
   const res=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{...(body!==undefined?{'Content-Type':'application/json'}:{}),...(token?{'X-Session-Token':token}:{}),...extra},...(body!==undefined?{body:JSON.stringify(body)}:{})});
@@ -118,4 +119,34 @@ test('검증된 내부형식 가져오기 후 live 목록·수어 후보 조회'
  const c=await h.request('/api/companies');assert.equal(c.body.meta.isDemo,false);assert.equal(c.body.data.items.length,1);
  const s=await h.request('/api/signs?keyword='+encodeURIComponent('협업'));assert.equal(s.body.data.matchStatus,'candidate');assert.equal(s.body.data.items[0].videoUrl,undefined);
  const invalid=structuredClone(data);invalid.signs[0].videoUrl='http://example.org/unverified';assert.throws(()=>importDataset(h.app.db,invalid));
+});
+
+test('browser preflight permits the session header only for configured origins',async t=>{
+ const h=await setup(t);
+ const response=await fetch(h.base+'/api/resume/analyze',{method:'OPTIONS',headers:{Origin:'http://127.0.0.1:5173','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,x-session-token'}});
+ assert.equal(response.status,204);
+ assert.equal(response.headers.get('access-control-allow-origin'),'http://127.0.0.1:5173');
+ assert.match(response.headers.get('access-control-allow-headers'),/X-Session-Token/);
+ assert.equal((await fetch(h.base+'/api/session',{method:'OPTIONS',headers:{Origin:'https://untrusted.example'}})).status,403);
+});
+
+test('ending a session while analysis is pending prevents delivery of the result',async t=>{
+ let release,started;
+ const waiting=new Promise(r=>release=r),begun=new Promise(r=>started=r);
+ const h=await setup(t,{},async()=>{started();await waiting;return {summary:'요약',keywords:[],competencies:[]};});
+ const token=await h.session();
+ const pending=h.request('/api/resume/analyze',{resumeText:'가상 입력'},token);
+ await begun;
+ try { assert.equal((await h.request('/api/session/end',{},token)).status,200); } finally {release();}
+ assert.equal((await pending).status,410);
+});
+
+test('session expiry while analysis is pending prevents delivery of the result',async t=>{
+ let release,started;
+ const waiting=new Promise(r=>release=r),begun=new Promise(r=>started=r);
+ const h=await setup(t,{ttl:100},async()=>{started();await waiting;return {summary:'요약',keywords:[],competencies:[]};});
+ const token=await h.session();
+ const pending=h.request('/api/resume/analyze',{resumeText:'가상 입력'},token);
+ await begun;await new Promise(r=>setTimeout(r,120));release();
+ assert.equal((await pending).status,410);
 });
