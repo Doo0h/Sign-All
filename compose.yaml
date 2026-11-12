@@ -19,6 +19,7 @@ services:
       REFERENCE_DATA_PATH: /app/data/reference-starter.json
       ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:-http://localhost:8080},http://127.0.0.1:8080
       TRUST_PROXY: "true"
+      POSTINGS_ENABLED: "true"
       AI_PROVIDER: ${AI_PROVIDER:-groq}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-openai/gpt-oss-20b}
