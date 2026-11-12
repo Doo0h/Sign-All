@@ -10,7 +10,7 @@ export function domesticPostings(request,now,plainText,classify){
  function naver(r){
    const deadline=kst(r.endYmdTime),start=kst(r.staYmdTime);
    if(!Number.isSafeInteger(r.annoId)||!String(r.stateCdNm||'').startsWith('채용진행중')||!deadline||Date.parse(deadline)<=now()||start&&Date.parse(start)>now())return null;
-   return {id:'naver:'+r.annoId,board:'naver',companyName:r.sysCompanyCdNm||'NAVER',title:r.annoSubject,location:'근무지 원문 확인',category:classify(r.annoSubject+' '+r.subJobCdNm),experience:r.entTypeCdNm==='신입'?'신입·인턴 명시':r.entTypeCdNm==='경력'?'경력 표현 포함':'원문 확인',sourceUrl:'https://recruit.navercorp.com/rcrt/view.do?annoId='+r.annoId,deadline,checkedAt:new Date(now()).toISOString(),updatedAt:start};
+   return {id:'naver:'+r.annoId,board:'naver',companyName:r.sysCompanyCdNm||'NAVER',title:r.annoSubject,location:'근무지 원문 확인',category:classify(r.annoSubject+' '+r.subJobCdNm),experience:r.entTypeCdNm==='신입'?'신입·인턴 명시':r.entTypeCdNm==='경력'?'경력 표현 포함':'원문 확인',sourceUrl:'https://recruit.navercorp.com/rcrt/view.do?annoId='+r.annoId,deadline,checkedAt:new Date(now()).toISOString(),updatedAt:null,publishedAt:start};
  }
  async function naverList(){const r=await request('https://recruit.navercorp.com/rcrt/loadJobList.do');if(!Array.isArray(r.list))throw Error('INVALID_LIST');return r.list.map(naver).filter(Boolean);}
  return {
@@ -31,7 +31,7 @@ export function domesticPostings(request,now,plainText,classify){
      const p=(await naverList()).find(p=>p.id==='naver:'+id);if(!p)fail(410,'POSTING_UNAVAILABLE','공고가 마감되었거나 더 이상 제공되지 않습니다.');
      const html=await request(p.sourceUrl,true),start=html.indexOf('class="detail_wrap"'),end=html.indexOf('class="half_detail_box"',start);
      if(start<0||end<0)fail(503,'POSTINGS_UNAVAILABLE','공고 상세 형식이 변경되었습니다. 원문을 확인해 주세요.');
-     const block=html.slice(start,end);p.description=plainText(block.slice(block.indexOf('>')+1));
+     const block=html.slice(start,html.lastIndexOf('<',end));p.description=plainText(block.slice(block.indexOf('>')+1));
      const structured=html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
      if(structured)try{const j=JSON.parse(structured[1]);p.location=j.jobLocation?.address?.streetAddress||p.location;}catch{}
      return p;
