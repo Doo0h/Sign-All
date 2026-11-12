@@ -155,6 +155,7 @@ async function loadLists() {
 
 // ---------- S1 기업·직무
 function S1() {
+  if(st.posting){st.posting=null;st.companyId='';st.jobId='';}
   const opts = (items, cur) => [
     h('option', { value: '' }, '선택해 주세요'),
     ...items.map((i) => h('option', { value: i.id, selected: i.id === cur }, i.name)),
@@ -220,8 +221,6 @@ function postingBrowser(){
           const r=await api('/api/postings/select',{postingId:p.id});
           if(!panel.isConnected)return;
           st.posting=r.posting;st.companyId=r.company.id;st.jobId=r.job.id;resetQuestions();
-          if(!st.companies.some(c=>c.id===r.company.id))st.companies.push(r.company);
-          if(!st.jobs.some(j=>j.id===r.job.id))st.jobs.push(r.job);
           go('S2');
         })},'이 공고로 면접 연습 →');
         results.append(h('article',{className:'posting-card'},h('p',{className:'posting-company'},p.companyName),h('h4',{},p.title),h('p',{className:'posting-meta'},p.category+' · '+p.location),h('p',{className:'posting-meta'},p.experience+' · '+(p.deadline?'마감 '+new Date(p.deadline).toLocaleDateString('ko-KR'):'마감일 원문 확인')),h('a',{href:p.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'채용 공고 원문 ↗'),pick));
@@ -302,7 +301,7 @@ function S2() {
   ];
 }
 const summaryLine = () => h('p', { className: 'note' },
-  `선택: ${st.companies.find((c) => c.id === st.companyId)?.name ?? '-'} / ${st.jobs.find((j) => j.id === st.jobId)?.name ?? '-'}`);
+  st.posting?`선택: ${st.posting.companyName} / ${st.posting.title}`:`선택: ${st.companies.find((c) => c.id === st.companyId)?.name ?? '-'} / ${st.jobs.find((j) => j.id === st.jobId)?.name ?? '-'}`);
 
 // ---------- S3 질문 목록
 function S3() {
