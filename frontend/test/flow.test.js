@@ -122,3 +122,18 @@ test('external AI analysis starts directly from the unified resume editor',async
  const editor=h.d.querySelector('.resume-editor');assert.ok(editor.contains(h.d.getElementById('resume')));assert.ok(editor.contains(h.d.getElementById('resume-file')));
  h.input('resume','가상 입력');h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);assert.equal(calls,1);
 });
+
+test('live posting filters and selection carry posting context into question request',async t=>{
+ let sent;const posting={id:'test:1',board:'test',companyName:'Test Company',title:'Security Engineer',description:'Review access controls',sourceUrl:'https://example.org/jobs/1',location:'Seoul',category:'보안',experience:'원문 확인'};
+ const h=await setup(t,(url,options)=>{
+  if(url==='/api/health')return Promise.resolve(Response.json({data:{postingsEnabled:true}}));
+  if(url.startsWith('/api/postings?'))return Promise.resolve(Response.json({data:{items:[posting],total:1,checkedAt:'2026-11-12T00:00:00Z',failedBoards:[],companies:[{id:'test',name:'Test Company'}],categories:['보안']}}));
+  if(url==='/api/postings/select')return Promise.resolve(Response.json({data:{posting,company:{id:'hiring-test',name:'Test Company'},job:{id:'posting-test-1',name:posting.title}}}));
+  if(url==='/api/interview/questions'){sent=JSON.parse(options.body);return Promise.resolve(Response.json({data:{questions:[{questionId:'q1',text:'Security question',keywords:[],references:[]}]}}));}
+ });
+ h.click('내 면접');await h.screen('S1');await h.wait(()=>h.d.querySelector('.posting-card'));
+ assert.ok(h.d.querySelector('.posting-filters'));h.click('이 공고로 면접 연습');await h.screen('S2');
+ assert.ok(h.d.querySelector('.selected-posting').textContent.includes('Review access controls'));
+ h.input('resume','가상 경험');h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);h.click('예상 질문');await h.screen('S3');
+ assert.equal(sent.postingId,'test:1');assert.equal(sent.companyId,'hiring-test');
+});

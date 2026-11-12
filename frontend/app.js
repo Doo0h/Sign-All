@@ -6,7 +6,7 @@ const STEPS = { S0: '시작', S1: '기업·직무 선택', S2: '자기소개서'
 // 토큰은 메모리(이 객체)에만 둔다. URL·storage·콘솔에 남기지 않는다.
 const fresh = () => ({
   screen: 'S0', token: null, isDemo: false, companies: [], jobs: [],
-  companyId: '', jobId: '', resumeText: '', analysis: null,
+  companyId: '', jobId: '', posting:null, resumeText: '', analysis: null,
   questions: [], answers: {}, feedbacks: {}, signs: {}, current: 0, uploadName: '',
 });
 let st = fresh();
@@ -155,6 +155,7 @@ async function loadLists() {
 
 // ---------- S1 기업·직무
 function S1() {
+  if(st.posting){st.posting=null;st.companyId='';st.jobId='';}
   const opts = (items, cur) => [
     h('option', { value: '' }, '선택해 주세요'),
     ...items.map((i) => h('option', { value: i.id, selected: i.id === cur }, i.name)),
@@ -165,7 +166,7 @@ function S1() {
   const pick = (key) => (e) => {
     if (e.target.value === st[key]) return;
     if (!confirmReset()) { e.target.value = st[key]; return; }
-    st[key] = e.target.value; resetQuestions(); sync();
+    st[key] = e.target.value; st.posting=null; resetQuestions(); sync();
   };
   const companySelect=h('select', { id: 'company', onchange: e=>{pick('companyId')(e);drawCards();} }, opts(st.companies, st.companyId));
   const cards=h('div',{className:'company-grid'});
@@ -182,9 +183,12 @@ function S1() {
     if(!filtered.length)cards.append(h('p',{},'검색 결과가 없습니다. 다른 검색어를 입력해 주세요.'));
   }
   drawCards();
+  const hiring=serverInfo?.postingsEnabled?postingBrowser():null;
   return [
     h('p',{className:'eyebrow'},'EXPLORE COMPANIES'),title('어떤 미래를 준비하고 있나요?'),
-    h('p', { className: 'lead' }, '관심 기업을 선택하고 내 경험을 연결해 보세요. 아래 직무는 일반 면접 연습용이며 현재 채용 공고가 아닙니다.'),
+    h('p', { className: 'lead' }, '채용 공고를 선택해 맞춤 면접을 준비하거나, 기업과 직무를 직접 골라 연습하세요.'),
+    hiring,
+    h('h3',{className:'practice-heading'},'기업·직무 직접 선택'),
     h('label',{htmlFor:'company-search'},'기업 찾기'),search,cards,
     st.companies.length ? null : h('p', {}, '불러올 수 있는 기업 정보가 없습니다.'),
     st.jobs.length ? null : h('p', {}, '불러올 수 있는 직무 정보가 없습니다.'),
@@ -195,6 +199,40 @@ function S1() {
     h('p', { className: 'note' }, '기업 공식 소개와 팀 작성 직무 연습 기준을 구분합니다. 실제 지원서가 기업에 제출되지 않습니다.'),
     next,
   ];
+}
+function postingBrowser(){
+  const results=h('div',{className:'posting-grid'}),status=h('p',{role:'status'}),selected=h('div',{className:'posting-selected'});
+  const q=h('input',{type:'search',placeholder:'기업명 또는 공고 제목',maxLength:100,'aria-label':'채용 공고 검색'});
+  const company=h('select',{'aria-label':'채용 기업'},h('option',{value:''},'전체 기업'));
+  const category=h('select',{'aria-label':'채용 직무'},h('option',{value:''},'전체 직무'));
+  const region=h('input',{type:'search',placeholder:'지역 (서울은 Seoul로 검색)',maxLength:100,'aria-label':'근무지역'});
+  const experience=h('select',{'aria-label':'경력 표현'},...['','신입·인턴 명시','경력 표현 포함','원문 확인'].map(v=>h('option',{value:v},v||'전체 경력')));
+  const more=h('button',{type:'button'},'공고 더 보기');let offset=0,version=0,initialized=false;
+  const panel=h('section',{className:'hiring-panel'},h('h3',{},'현재 채용 공고'),h('p',{className:'posting-notice'},'연결된 6개 기업의 한국 근무 공고입니다. 직무·경력은 제목 기준 분류이며, 정확한 지원 조건과 마감일은 원문에서 확인하세요.'));
+  async function search(append=false){
+    const request=++version;if(!append){offset=0;results.replaceChildren();}more.disabled=true;status.textContent='공식 채용 게시판을 확인하고 있습니다…';
+    try{
+      const params=new URLSearchParams({q:q.value,company:company.value,category:category.value,region:region.value,experience:experience.value,offset:String(offset)});
+      const data=await api('/api/postings?'+params);
+      if(request!==version||!panel.isConnected)return;
+      if(!initialized){company.append(...data.companies.map(c=>h('option',{value:c.id},c.name)));category.append(...data.categories.map(c=>h('option',{value:c},c)));initialized=true;}
+      for(const p of data.items){
+        const pick=h('button',{type:'button',onclick:()=>run(pick,'공고 원문을 확인하고 있습니다.',async()=>{
+          const r=await api('/api/postings/select',{postingId:p.id});
+          if(!panel.isConnected)return;
+          st.posting=r.posting;st.companyId=r.company.id;st.jobId=r.job.id;resetQuestions();
+          go('S2');
+        })},'이 공고로 면접 연습 →');
+        results.append(h('article',{className:'posting-card'},h('p',{className:'posting-company'},p.companyName),h('h4',{},p.title),h('p',{className:'posting-meta'},p.category+' · '+p.location),h('p',{className:'posting-meta'},p.experience+' · '+(p.deadline?'마감 '+new Date(p.deadline).toLocaleDateString('ko-KR'):'마감일 원문 확인')),h('a',{href:p.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'채용 공고 원문 ↗'),pick));
+      }
+      offset+=data.items.length;more.hidden=offset>=data.total;
+      status.textContent=`${data.total}개 공고 · ${offset}개 표시 · 확인 ${new Date(data.checkedAt).toLocaleString('ko-KR')}`+(data.failedBoards.length?' · 일부 기업 연결 실패: '+data.failedBoards.join(', '):'');
+      if(!data.total)results.append(h('p',{},'조건에 맞는 공고가 없습니다. 검색 조건을 바꿔 보세요.'));
+    }catch(e){if(request===version&&panel.isConnected){status.textContent=e.message;more.hidden=true;}}finally{if(request===version)more.disabled=false;}
+  }
+  const form=h('form',{className:'posting-filters',onsubmit:e=>{e.preventDefault();search();}},q,company,category,region,experience,h('button',{type:'submit'},'공고 검색'));
+  more.addEventListener('click',()=>search(true));panel.append(form,status,selected,results,more);
+  queueMicrotask(()=>{if(panel.isConnected)search();});return panel;
 }
 const hasFeedback = () => Object.keys(st.feedbacks).length > 0;
 function resetQuestions() { st.questions = []; st.answers = {}; st.feedbacks = {}; st.signs = {}; st.current = 0; }
@@ -233,7 +271,7 @@ function S2() {
   } }, '분석하기');
   gen.addEventListener('click', () => run(gen, '예상 질문을 만들고 있습니다.', async () => {
     resetQuestions();
-    const r = await api('/api/interview/questions', { companyId: st.companyId, jobId: st.jobId, analysisId: st.analysis.analysisId });
+    const r = await api('/api/interview/questions', { companyId: st.companyId, jobId: st.jobId, analysisId: st.analysis.analysisId,...(st.posting?{postingId:st.posting.id}:{}) });
     resetQuestions(); st.questions = r.questions; go('S3');
   }));
   showAnalysis();
@@ -253,6 +291,7 @@ function S2() {
   }},'파일에서 불러오기');
   return [
     title('자기소개서'),
+    st.posting?h('details',{className:'selected-posting'},h('summary',{},st.posting.companyName+' · '+st.posting.title),h('p',{},st.posting.description),h('a',{href:st.posting.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'공고 원문 ↗')):null,
     h('section',{className:'resume-editor','aria-label':'자기소개서 작성'},
       h('label', { htmlFor: 'resume',className:'resume-title' }, '내용 작성'), ta, count,
       h('div',{className:'resume-attachment'},h('label',{htmlFor:'resume-file'},'파일로 불러오기'),
@@ -262,7 +301,7 @@ function S2() {
   ];
 }
 const summaryLine = () => h('p', { className: 'note' },
-  `선택: ${st.companies.find((c) => c.id === st.companyId)?.name ?? '-'} / ${st.jobs.find((j) => j.id === st.jobId)?.name ?? '-'}`);
+  st.posting?`선택: ${st.posting.companyName} / ${st.posting.title}`:`선택: ${st.companies.find((c) => c.id === st.companyId)?.name ?? '-'} / ${st.jobs.find((j) => j.id === st.jobId)?.name ?? '-'}`);
 
 // ---------- S3 질문 목록
 function S3() {

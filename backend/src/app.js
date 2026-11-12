@@ -5,6 +5,7 @@ import {openDatabase,importDataset,repository,demoData} from './db.js';
 import {createAI} from './ai.js';
 import {extractDocument,documentTypes} from './documents.js';
 import {isIP} from 'node:net';
+import {createPostings} from './postings.js';
 
 export function createApp(options={}) {
   const cfg=options.config || config();
@@ -13,6 +14,11 @@ export function createApp(options={}) {
   const repo=repository(db,cfg.referenceMode || cfg.mode);
   let extracting=0;
   const ai=options.ai || createAI(cfg);
+  const postings=options.postings || createPostings();
+  const postingContext=p=>{
+    const sourceId='posting-'+p.id.replace(':','-');
+    return {company:{id:'hiring-'+p.board,name:p.companyName,sourceId},job:{id:sourceId,name:p.title,description:p.description,location:p.location,sourceId},source:{id:sourceId,name:p.companyName+' · '+p.title,url:p.sourceUrl,checkedAt:p.checkedAt}};
+  };
   const sessions=new Map(), rates=new Map();
   let active=0, calls=0, budgetUntil=Date.now()+3600000;
   const clean=()=>{
@@ -70,7 +76,7 @@ export function createApp(options={}) {
       const url=new URL(req.url,'http://localhost');
       const path=url.pathname;
       let result;
-      if(req.method==='GET' && path==='/api/health')result={status:'ok',mode:cfg.mode,dataMode:cfg.referenceMode||cfg.mode,aiProvider:cfg.aiProvider,aiMode:cfg.mode==='demo'?'demo-rule-based':cfg.aiProvider==='ollama'?'local-model':'external',documentTypes,persistentUserData:false};
+      if(req.method==='GET' && path==='/api/health')result={status:'ok',mode:cfg.mode,dataMode:cfg.referenceMode||cfg.mode,aiProvider:cfg.aiProvider,aiMode:cfg.mode==='demo'?'demo-rule-based':cfg.aiProvider==='ollama'?'local-model':'external',documentTypes,persistentUserData:false,postingsEnabled:cfg.postingsEnabled};
       else if(req.method==='POST' && path==='/api/session'){
         const b=await body(req);fields(b,[]);clean();
         if(sessions.size>=cfg.maxSessions)fail(503,'SESSION_CAPACITY','세션 한도에 도달했습니다.',undefined,true);
@@ -79,6 +85,15 @@ export function createApp(options={}) {
         result={sessionToken:token,expiresAt:new Date(expires).toISOString(),notice:'입력과 결과는 임시 메모리에서만 처리합니다. 데모 모드는 실제 AI가 아닙니다.'};
       } else if(req.method==='POST' && path==='/api/session/end'){
         const b=await body(req);fields(b,[]);getSession(req);sessions.delete(req.headers['x-session-token']);result={ended:true};
+      } else if(req.method==='GET' && path==='/api/postings'){
+        if(!cfg.postingsEnabled)fail(503,'POSTINGS_DISABLED','채용 공고 연결이 설정되지 않았습니다.');
+        result=await postings.list(url.searchParams);
+      } else if(req.method==='POST' && path==='/api/postings/select'){
+        if(!cfg.postingsEnabled)fail(503,'POSTINGS_DISABLED','채용 공고 연결이 설정되지 않았습니다.');
+        const s=getSession(req),b=await body(req);fields(b,['postingId']);
+        if(s.analysisBusy||s.questionsBusy||s.postingBusy)fail(409,'CONTEXT_BUSY','현재 요청을 마친 뒤 다시 선택해 주세요.');
+        s.postingBusy=true;
+        try{const p=await postings.detail(b.postingId);getSession(req);s.posting=p;s.questions=[];s.revision++;result={posting:p,...postingContext(p)};}finally{s.postingBusy=false;}
       } else if(req.method==='GET' && ['/api/companies','/api/jobs'].includes(path)){
         for(const k of url.searchParams.keys())if(!['q','limit','offset'].includes(k))fail(400,'INVALID_INPUT','허용되지 않은 검색 조건입니다.',k);
         const q=url.searchParams.get('q') || '';if(q.length>100)fail(400,'INVALID_INPUT','검색어는 100자 이하여야 합니다.','q');
@@ -128,19 +143,23 @@ export function createApp(options={}) {
         s.analysisBusy=true;s.analysis=null;s.questions=[];s.revision++;
         try {const output=await gate('analyze',{resumeText});getSession(req);s.analysis={id:randomUUID(),...output};result={analysisId:s.analysis.id,...output};}finally{s.analysisBusy=false;}
       } else if(req.method==='POST' && path==='/api/interview/questions'){
-        const s=getSession(req),b=await body(req);fields(b,['companyId','jobId','analysisId']);
-        const company=find('companies',id(b.companyId,'companyId')),job=find('jobs',id(b.jobId,'jobId'));
+        const s=getSession(req),b=await body(req);fields(b,['companyId','jobId','analysisId','postingId']);
+        const selected=!!b.postingId;
+        if(selected&&(!cfg.postingsEnabled||s.posting?.id!==b.postingId))fail(409,'POSTING_SELECTION_REQUIRED','공고를 목록에서 먼저 선택해 주세요.');
+        let context=selected?postingContext(s.posting):null;
+        let company=selected?context.company:find('companies',id(b.companyId,'companyId')),job=selected?context.job:find('jobs',id(b.jobId,'jobId'));
         const analysisId=id(b.analysisId,'analysisId');
         if(!s.analysis || s.analysis.id!==analysisId)fail(404,'RESOURCE_NOT_FOUND','현재 세션의 분석 결과를 찾을 수 없습니다.');
-        if(s.analysisBusy || s.questionsBusy)fail(409,'CONTEXT_BUSY','현재 요청이 완료된 뒤 다시 시도해 주세요.',undefined,true);
-        const units=repo.units(job.id);if(!units.length)fail(503,'REFERENCE_DATA_UNAVAILABLE','직무 참고자료가 준비되지 않았습니다.');
+        if(s.analysisBusy || s.questionsBusy || s.postingBusy)fail(409,'CONTEXT_BUSY','현재 요청이 완료된 뒤 다시 시도해 주세요.',undefined,true);
+        const units=selected?[]:repo.units(job.id);if(!selected&&!units.length)fail(503,'REFERENCE_DATA_UNAVAILABLE','직무 참고자료가 준비되지 않았습니다.');
         const referenceIds=[...new Set([company.sourceId,job.sourceId,...units.map(u=>u.sourceId)])];
         s.questionsBusy=true;s.questions=[];s.revision++;
         try {
+          if(selected){const p=await postings.detail(b.postingId);getSession(req);s.posting=p;context=postingContext(p);company=context.company;job=context.job;}
           const output=await gate('questions',{company,job,units,analysis:s.analysis,referenceIds});
           getSession(req);
-          s.questions=output.questions.map(q=>({...q,questionId:randomUUID(),jobId:job.id,companyId:company.id}));
-          result={questions:s.questions.map(q=>({...q,references:referenceObjects(q.referenceIds)}))};
+          s.questions=output.questions.map(q=>({...q,questionId:randomUUID(),jobId:job.id,companyId:company.id,...(selected?{jobSnapshot:job,sourceSnapshot:context.source}:{})}));
+          result={questions:s.questions.map(({jobSnapshot,sourceSnapshot,...q})=>({...q,references:sourceSnapshot?[sourceSnapshot].filter(r=>q.referenceIds.includes(r.id)):referenceObjects(q.referenceIds)}))};
         }finally{s.questionsBusy=false;}
       } else if(req.method==='POST' && path==='/api/interview/feedback'){
         const s=getSession(req),b=await body(req);fields(b,['questionId','answerText']);
@@ -149,10 +168,10 @@ export function createApp(options={}) {
         if(!question)fail(404,'RESOURCE_NOT_FOUND','현재 세션의 질문을 찾을 수 없습니다.');
         if(s.analysisBusy || s.questionsBusy)fail(409,'CONTEXT_BUSY','질문 갱신이 끝난 뒤 다시 시도해 주세요.',undefined,true);
         const revision=s.revision;
-        const output=await gate('feedback',{questionText:question.text,answerText,job:repo.get('jobs',question.jobId),units:repo.units(question.jobId),referenceIds:question.referenceIds});
+        const output=await gate('feedback',{questionText:question.text,answerText,job:question.jobSnapshot||repo.get('jobs',question.jobId),units:question.jobSnapshot?[]:repo.units(question.jobId),referenceIds:question.referenceIds});
         getSession(req);
         if(revision!==s.revision)fail(409,'CONTEXT_CHANGED','질문이 변경되었습니다. 현재 질문으로 다시 답변해 주세요.');
-        result={strengths:output.strengths,improvements:output.improvements,suggestion:output.suggestion,references:referenceObjects(output.referenceIds)};
+        result={strengths:output.strengths,improvements:output.improvements,suggestion:output.suggestion,references:question.sourceSnapshot?[question.sourceSnapshot].filter(r=>output.referenceIds.includes(r.id)):referenceObjects(output.referenceIds)};
       } else fail(404,'ROUTE_NOT_FOUND','해당 경로 또는 메서드를 찾을 수 없습니다.');
       send(200,{data:result,meta:{mode:cfg.mode,isDemo:cfg.mode==='demo',requestId}});
     } catch(e) {
