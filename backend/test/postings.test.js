@@ -4,6 +4,22 @@ import {createPostings,plainText} from '../src/postings.js';
 import {createApp} from '../src/app.js';
 import {config} from '../src/common.js';
 const raw=(id,extra={})=>({id,internal_job_id:id,title:'Software Engineer',location:{name:'Seoul, Korea'},absolute_url:'https://job-boards.greenhouse.io/test/jobs/'+id,content:'&lt;p&gt;Build APIs &amp;amp; test systems&lt;/p&gt;',...extra});
+test('enterprise filters separate curated large and global sources and reject unknown types',async()=>{
+ const service=createPostings({providers:[['coupang','쿠팡'],['moloco','몰로코']],fetcher:async()=>Response.json({jobs:[raw(1)]})});
+ assert.equal((await service.list(new URLSearchParams({enterpriseType:'large'}))).items[0].board,'coupang');
+ assert.equal((await service.list(new URLSearchParams({enterpriseType:'global'}))).items[0].board,'moloco');
+ assert.equal((await service.list(new URLSearchParams({enterpriseType:'public'}))).total,0);
+ await assert.rejects(service.list(new URLSearchParams({enterpriseType:'unknown'})),{code:'INVALID_INPUT'});
+});
+test('JOB-ALIO institution type filters produce distinct public enterprise and agency results',async()=>{
+ const cell=v=>'<td>'+v+'</td>';
+ const service=createPostings({providers:[['alio','JOB-ALIO']],now:()=>Date.parse('2026-11-12'),fetcher:async url=>{
+  const code=new URL(url).searchParams.get('org_type'),id=Number(code.slice(-1));
+  return new Response('<select name="org_type"></select><table><tr>'+['',1,`<a href="/recruitview.do?idx=${id}">기관 채용</a>`,'기관'+id,'서울','정규직','2026.11.12','26.12.01','진행중'].map(cell).join('')+'</tr></table>');
+ }});
+ assert.equal((await service.list(new URLSearchParams({enterpriseType:'public'}))).total,5);
+ const enterprises=await service.list(new URLSearchParams({enterpriseType:'public-enterprise'}));assert.equal(enterprises.total,2);assert.ok(enterprises.items.every(p=>p.organizationType.startsWith('공기업')));
+});
 test('posting pages contain ten unique entries and preserve the final partial page',async()=>{
  const service=createPostings({providers:[['test','Test']],fetcher:async()=>Response.json({jobs:Array.from({length:25},(_,i)=>raw(i+1))})});
  const first=await service.list(new URLSearchParams()),second=await service.list(new URLSearchParams({offset:'10'})),third=await service.list(new URLSearchParams({offset:'20'}));

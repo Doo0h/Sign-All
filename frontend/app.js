@@ -211,14 +211,19 @@ function postingBrowser(){
   const experience=h('select',{'aria-label':'경력 표현'},...['','신입·인턴 명시','경력 표현 포함','원문 확인'].map(v=>h('option',{value:v},v||'전체 경력')));
   const sort=h('select',{'aria-label':'공고 정렬'},h('option',{value:'default'},'기업별 보기'),h('option',{value:'deadline'},'마감 임박순'),h('option',{value:'recent'},'최근 갱신순'));
   const chips=h('div',{className:'company-chips','aria-label':'기업 바로 선택'});
+  const typeChips=h('div',{className:'enterprise-chips','aria-label':'기업 유형 선택'}),typeNotice=h('p',{className:'enterprise-notice'});let enterpriseType='';
   const pages=h('nav',{className:'posting-pages','aria-label':'채용공고 페이지'});let offset=0,version=0,initialized=false;
   const panel=h('section',{className:'hiring-panel hiring-table'},h('p',{className:'posting-notice'},'공식 채용공고를 확인하고 나에게 맞는 면접을 준비하세요. 한 페이지에 10개씩 표시합니다.'));
   async function search(page=1){
     const request=++version;offset=(page-1)*10;results.replaceChildren();pages.replaceChildren();selected.hidden=true;status.textContent='공식 채용 게시판을 확인하고 있습니다…';
     try{
-      const params=new URLSearchParams({q:q.value,company:company.value,category:category.value,region:region.value,experience:experience.value,sort:sort.value,offset:String(offset)});
+      const params=new URLSearchParams({q:q.value,company:company.value,category:category.value,region:region.value,experience:experience.value,sort:sort.value,enterpriseType,offset:String(offset)});
       const data=await api('/api/postings?'+params);
       if(request!==version||!panel.isConnected)return;
+      const types=[{id:'',name:'전체'},...(data.enterpriseTypes||[{id:'large',name:'주요 대기업'},{id:'public-enterprise',name:'공기업'},{id:'public',name:'공공기관 전체'},{id:'global',name:'글로벌기업'}])];
+      const icons={'':'▦',large:'🏢','public-enterprise':'🏛',public:'🏛',global:'🌐'};
+      typeChips.replaceChildren(...types.map(t=>h('button',{type:'button','aria-pressed':String(enterpriseType===t.id),onclick:()=>{enterpriseType=t.id;company.value='';search();}},h('span',{'aria-hidden':'true'},icons[t.id]),t.name,t.count!==undefined?h('span',{className:'enterprise-count'},String(t.count)):null)));
+      typeNotice.textContent=enterpriseType.startsWith('public')?'JOB-ALIO 기관유형별 최신 1페이지의 진행 중 공고입니다. 공기업은 시장형·준시장형으로 구분된 기관이며, 전체 공공기관 공고를 모두 포함하지 않습니다.':enterpriseType==='large'?'카카오·네이버·쿠팡 채용 출처를 모은 탐색 분류입니다. 법적 기업규모 판정이나 인기 순위가 아닙니다.':enterpriseType==='global'?'현재 연결된 몰로코·센드버드·라이엇게임즈·Fender·2K 공고입니다.':'유형을 선택하면 해당 기업·기관의 공고만 볼 수 있습니다.';
       if(!initialized){company.append(...data.companies.map(c=>h('option',{value:c.id},c.name)));category.append(...data.categories.map(c=>h('option',{value:c},c)));chips.append(...[{id:'',name:'전체'},...data.companies].map(c=>h('button',{type:'button','aria-pressed':String(company.value===c.id),onclick:()=>{company.value=c.id;search();}},c.name)));initialized=true;}
       [...chips.children].forEach((b,i)=>b.setAttribute('aria-pressed',String(i===0?!company.value:data.companies[i-1]?.id===company.value)));
       for(const p of data.items){
@@ -236,7 +241,7 @@ function postingBrowser(){
         const fallback=h('span',{className:'posting-initial','aria-hidden':'true'},p.companyName.slice(0,1));
         const logo=logos[p.board]?h('img',{src:'/logos/'+p.board+'.'+logos[p.board],alt:p.companyName+' 기업 이미지',width:52,height:52,loading:'lazy',onerror:e=>e.target.replaceWith(fallback)}):fallback;
         const titleButton=h('button',{type:'button',className:'posting-title-button',onclick:()=>pick.click()},p.title);
-        results.append(h('article',{className:'posting-card posting-row',role:'listitem'},h('div',{className:'posting-row-company'},logo,h('p',{className:'posting-company'},p.companyName)),h('div',{className:'posting-row-info'},h('h4',{},titleButton),h('p',{className:'posting-meta'},p.category)),h('p',{className:'posting-cell'},p.experience),h('p',{className:'posting-cell'},p.location),h('div',{className:'posting-row-action'},h('p',{className:'posting-deadline'},p.deadline?new Date(p.deadline).toLocaleDateString('ko-KR'):'원문 확인'),pick)));
+        results.append(h('article',{className:'posting-card posting-row',role:'listitem'},h('div',{className:'posting-row-company'},logo,h('div',{},h('p',{className:'posting-company'},p.companyName),p.organizationType?h('span',{className:'organization-badge'},p.organizationType):null)),h('div',{className:'posting-row-info'},h('h4',{},titleButton),h('p',{className:'posting-meta'},p.category)),h('p',{className:'posting-cell'},p.experience),h('p',{className:'posting-cell'},p.location),h('div',{className:'posting-row-action'},h('p',{className:'posting-deadline'},p.deadline?new Date(p.deadline).toLocaleDateString('ko-KR'):'원문 확인'),pick)));
       }
       const totalPages=Math.ceil(data.total/10),start=Math.floor((page-1)/5)*5+1;
       const pageButton=(label,n,disabled=false)=>h('button',{type:'button',disabled,'aria-label':label==='이전'||label==='다음'?label+' 페이지':n+' 페이지','aria-current':n===page?'page':'false',onclick:()=>search(n)},label);
@@ -247,7 +252,7 @@ function postingBrowser(){
   }
   const form=h('form',{className:'posting-filters',onsubmit:e=>{e.preventDefault();search();}},q,company,category,region,experience,sort,h('button',{type:'submit'},'공고 검색'));
   const columns=h('div',{className:'posting-columns','aria-hidden':'true'},...['기업명','공고명 / 직무','경력','근무지역','마감일'].map(t=>h('span',{},t)));
-  panel.append(form,chips,status,columns,results,pages,selected);
+  panel.append(typeChips,typeNotice,form,chips,status,columns,results,pages,selected);
   queueMicrotask(()=>{if(panel.isConnected)search();});return panel;
 }
 const hasFeedback = () => Object.keys(st.feedbacks).length > 0;
