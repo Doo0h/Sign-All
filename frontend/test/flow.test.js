@@ -155,4 +155,6 @@ test('hiring directory removes manual company selectors and replaces ten rows pe
  h.d.querySelector('[aria-label="2 페이지"]').click();await h.wait(()=>h.d.querySelector('.posting-title-button')?.textContent==='공고 11');assert.equal(h.d.querySelectorAll('.posting-row').length,10);
  h.d.querySelector('[aria-label="3 페이지"]').click();await h.wait(()=>h.d.querySelectorAll('.posting-row').length===5);assert.equal(h.d.querySelector('.posting-title-button').textContent,'공고 21');
  assert.deepEqual(offsets,[0,10,20]);assert.equal(h.d.querySelector('[aria-label="다음 페이지"]').disabled,true);
+ h.click('주요 대기업');await h.wait(()=>offsets.length===4&&h.d.querySelectorAll('.posting-row').length===10);assert.equal(offsets[3],0);
+ assert.ok(h.d.querySelector('.enterprise-chips [aria-pressed=true]').textContent.includes('주요 대기업'));
 });
