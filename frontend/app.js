@@ -201,37 +201,43 @@ function S1() {
   ];
 }
 function postingBrowser(){
-  const results=h('div',{className:'posting-grid'}),status=h('p',{role:'status'}),selected=h('div',{className:'posting-selected'});
+  const results=h('div',{className:'posting-grid posting-list'}),status=h('p',{role:'status'}),selected=h('aside',{className:'posting-selected','aria-label':'선택한 공고 상세'},h('h4',{},'관심 공고를 선택하세요'),h('p',{},'목록에서 공고를 선택하면 담당업무와 지원자격을 여기에서 확인할 수 있습니다.'));
   const q=h('input',{type:'search',placeholder:'기업명 또는 공고 제목',maxLength:100,'aria-label':'채용 공고 검색'});
   const company=h('select',{'aria-label':'채용 기업'},h('option',{value:''},'전체 기업'));
   const category=h('select',{'aria-label':'채용 직무'},h('option',{value:''},'전체 직무'));
   const region=h('input',{type:'search',placeholder:'지역 (서울은 Seoul로 검색)',maxLength:100,'aria-label':'근무지역'});
   const experience=h('select',{'aria-label':'경력 표현'},...['','신입·인턴 명시','경력 표현 포함','원문 확인'].map(v=>h('option',{value:v},v||'전체 경력')));
+  const sort=h('select',{'aria-label':'공고 정렬'},h('option',{value:'default'},'기업별 보기'),h('option',{value:'deadline'},'마감 임박순'),h('option',{value:'recent'},'최근 갱신순'));
+  const chips=h('div',{className:'company-chips','aria-label':'기업 바로 선택'});
   const more=h('button',{type:'button'},'공고 더 보기');let offset=0,version=0,initialized=false;
-  const panel=h('section',{className:'hiring-panel'},h('h3',{},'현재 채용 공고'),h('p',{className:'posting-notice'},'연결된 6개 기업의 한국 근무 공고입니다. 직무·경력은 제목 기준 분류이며, 정확한 지원 조건과 마감일은 원문에서 확인하세요.'));
+  const panel=h('section',{className:'hiring-panel'},h('p',{className:'eyebrow'},'FIND YOUR NEXT ROLE'),h('h3',{},'채용공고 둘러보기'),h('p',{className:'posting-notice'},'카카오·네이버와 연결 기업의 공식 공고를 모았습니다. 공고 선택 → 상세 확인 → 면접 연습 순서로 준비하세요. 전체 기업을 포괄하는 목록은 아닙니다.'));
   async function search(append=false){
     const request=++version;if(!append){offset=0;results.replaceChildren();}more.disabled=true;status.textContent='공식 채용 게시판을 확인하고 있습니다…';
     try{
-      const params=new URLSearchParams({q:q.value,company:company.value,category:category.value,region:region.value,experience:experience.value,offset:String(offset)});
+      const params=new URLSearchParams({q:q.value,company:company.value,category:category.value,region:region.value,experience:experience.value,sort:sort.value,offset:String(offset)});
       const data=await api('/api/postings?'+params);
       if(request!==version||!panel.isConnected)return;
-      if(!initialized){company.append(...data.companies.map(c=>h('option',{value:c.id},c.name)));category.append(...data.categories.map(c=>h('option',{value:c},c)));initialized=true;}
+      if(!initialized){company.append(...data.companies.map(c=>h('option',{value:c.id},c.name)));category.append(...data.categories.map(c=>h('option',{value:c},c)));chips.append(...[{id:'',name:'전체'},...data.companies].map(c=>h('button',{type:'button','aria-pressed':String(company.value===c.id),onclick:()=>{company.value=c.id;search();}},c.name)));initialized=true;}
+      [...chips.children].forEach((b,i)=>b.setAttribute('aria-pressed',String(i===0?!company.value:data.companies[i-1]?.id===company.value)));
       for(const p of data.items){
-        const pick=h('button',{type:'button',onclick:()=>run(pick,'공고 원문을 확인하고 있습니다.',async()=>{
+        const pick=h('button',{type:'button',className:'posting-pick','aria-pressed':'false',onclick:()=>run(pick,'공고 원문을 확인하고 있습니다.',async()=>{
           const r=await api('/api/postings/select',{postingId:p.id});
           if(!panel.isConnected)return;
-          st.posting=r.posting;st.companyId=r.company.id;st.jobId=r.job.id;resetQuestions();
-          go('S2');
-        })},'이 공고로 면접 연습 →');
-        results.append(h('article',{className:'posting-card'},h('p',{className:'posting-company'},p.companyName),h('h4',{},p.title),h('p',{className:'posting-meta'},p.category+' · '+p.location),h('p',{className:'posting-meta'},p.experience+' · '+(p.deadline?'마감 '+new Date(p.deadline).toLocaleDateString('ko-KR'):'마감일 원문 확인')),h('a',{href:p.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'채용 공고 원문 ↗'),pick));
+          results.querySelectorAll('.posting-pick').forEach(b=>b.setAttribute('aria-pressed',String(b===pick)));
+          const heading=h('h4',{tabIndex:-1},r.posting.title);
+          selected.replaceChildren(h('p',{className:'posting-company'},r.posting.companyName),heading,h('p',{className:'posting-meta'},r.posting.location),h('p',{className:'posting-description'},r.posting.description||'상세 내용은 공고 원문에서 확인하세요.'),h('p',{className:'posting-notice'},'공고 본문의 일부를 표시합니다. 정확한 자격요건과 마감은 원문을 확인하세요.'),h('a',{href:r.posting.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'공식 공고 원문 ↗'),h('button',{className:'primary',type:'button',onclick:()=>{st.posting=r.posting;st.companyId=r.company.id;st.jobId=r.job.id;resetQuestions();go('S2');}},'이 공고로 면접 연습 →'));
+          heading.focus({preventScroll:true});
+          if(window.matchMedia?.('(max-width:1250px)').matches)selected.scrollIntoView({block:'nearest'});
+        })},'공고 선택');
+        results.append(h('article',{className:'posting-card posting-row'},h('div',{className:'posting-row-company'},h('span',{className:'posting-initial','aria-hidden':'true'},p.companyName.slice(0,1)),h('p',{className:'posting-company'},p.companyName)),h('div',{className:'posting-row-info'},h('h4',{},p.title),h('p',{className:'posting-meta'},p.category+' · '+p.location),h('p',{className:'posting-meta'},p.experience)),h('div',{className:'posting-row-action'},h('p',{className:'posting-deadline'},p.deadline?'마감 '+new Date(p.deadline).toLocaleDateString('ko-KR'):'마감일 원문 확인'),pick)));
       }
       offset+=data.items.length;more.hidden=offset>=data.total;
       status.textContent=`${data.total}개 공고 · ${offset}개 표시 · 확인 ${new Date(data.checkedAt).toLocaleString('ko-KR')}`+(data.failedBoards.length?' · 일부 기업 연결 실패: '+data.failedBoards.join(', '):'');
       if(!data.total)results.append(h('p',{},'조건에 맞는 공고가 없습니다. 검색 조건을 바꿔 보세요.'));
     }catch(e){if(request===version&&panel.isConnected){status.textContent=e.message;more.hidden=true;}}finally{if(request===version)more.disabled=false;}
   }
-  const form=h('form',{className:'posting-filters',onsubmit:e=>{e.preventDefault();search();}},q,company,category,region,experience,h('button',{type:'submit'},'공고 검색'));
-  more.addEventListener('click',()=>search(true));panel.append(form,status,selected,results,more);
+  const form=h('form',{className:'posting-filters',onsubmit:e=>{e.preventDefault();search();}},q,company,category,region,experience,sort,h('button',{type:'submit'},'공고 검색'));
+  more.addEventListener('click',()=>search(true));panel.append(form,chips,status,h('div',{className:'posting-browser-body'},h('div',{},results,more),selected));
   queueMicrotask(()=>{if(panel.isConnected)search();});return panel;
 }
 const hasFeedback = () => Object.keys(st.feedbacks).length > 0;

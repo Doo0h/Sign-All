@@ -132,7 +132,9 @@ test('live posting filters and selection carry posting context into question req
   if(url==='/api/interview/questions'){sent=JSON.parse(options.body);return Promise.resolve(Response.json({data:{questions:[{questionId:'q1',text:'Security question',keywords:[],references:[]}]}}));}
  });
  h.click('내 면접');await h.screen('S1');await h.wait(()=>h.d.querySelector('.posting-card'));
- assert.ok(h.d.querySelector('.posting-filters'));h.click('이 공고로 면접 연습');await h.screen('S2');
+ assert.ok(h.d.querySelector('.posting-filters'));h.click('공고 선택');await h.wait(()=>h.d.querySelector('.posting-selected').textContent.includes('Review access controls'));
+ assert.equal(h.d.querySelector('main').dataset.screen,'S1');assert.equal(h.d.querySelector('.posting-pick').getAttribute('aria-pressed'),'true');
+ h.click('이 공고로 면접 연습');await h.screen('S2');
  assert.ok(h.d.querySelector('.selected-posting').textContent.includes('Review access controls'));
  h.input('resume','가상 경험');h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);h.click('예상 질문');await h.screen('S3');
  assert.equal(sent.postingId,'test:1');assert.equal(sent.companyId,'hiring-test');
