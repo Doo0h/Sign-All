@@ -4,6 +4,20 @@ import {createPostings,plainText} from '../src/postings.js';
 import {createApp} from '../src/app.js';
 import {config} from '../src/common.js';
 const raw=(id,extra={})=>({id,internal_job_id:id,title:'Software Engineer',location:{name:'Seoul, Korea'},absolute_url:'https://job-boards.greenhouse.io/test/jobs/'+id,content:'&lt;p&gt;Build APIs &amp;amp; test systems&lt;/p&gt;',...extra});
+test('Kakao public roles exclude private/closed/expired posts and verify detail ID',async()=>{
+ const job={realId:'P-100',jobOfferTitle:'보안 엔지니어',companyName:'카카오',locationName:'판교',useFlag:true,statusCode:'PROGRESS',privateFlag:false,closeFlag:false,endDate:'2026-11-13T00:00:00',workContentDesc:'<p>접근 제어 운영</p>',qualification:'보안 지식'};
+ const service=createPostings({providers:[['kakao','카카오']],now:()=>Date.parse('2026-11-12T00:00:00Z'),fetcher:async url=>Response.json(url.includes('job-detail')?job:{totalPage:1,jobList:[job,{...job,realId:'P-101',privateFlag:true},{...job,realId:'P-102',closeFlag:true},{...job,realId:'P-103',endDate:'2026-11-12T00:00:00'}]})});
+ const list=await service.list(new URLSearchParams());assert.equal(list.total,1);assert.equal(list.items[0].deadline,'2026-11-12T15:00:00.000Z');
+ const detail=await service.detail('kakao:P-100');assert.equal(detail.description,'접근 제어 운영 보안 지식');
+ await assert.rejects(service.detail('kakao:P-999'),{code:'POSTING_UNAVAILABLE'});
+});
+test('NAVER active list revalidates deadline and extracts only detail section',async()=>{
+ const row={annoId:123,annoSubject:'신입 개발',sysCompanyCdNm:'NAVER',stateCdNm:'채용진행중(게시)',staYmdTime:'2026.11.01 09:00:00',endYmdTime:'2026.11.13 18:00:00',entTypeCdNm:'신입'};
+ const service=createPostings({providers:[['naver','NAVER']],now:()=>Date.parse('2026-11-12T00:00:00Z'),fetcher:async url=>url.includes('loadJobList')?Response.json({list:[row,{...row,annoId:124,endYmdTime:'2026.11.11 18:00:00'}]}):new Response('<header>ignore</header><div class="detail_wrap"><p>Build APIs</p></div><div class="half_detail_box">ignore</div>')});
+ assert.equal((await service.list(new URLSearchParams({sort:'deadline'}))).total,1);
+ assert.equal((await service.detail('naver:123')).description,'Build APIs');
+ await assert.rejects(service.detail('naver:124'),{code:'POSTING_UNAVAILABLE'});
+});
 test('public postings filter Korea/prospects/deadlines and share bounded cache',async()=>{
  let count=0,clock=Date.parse('2026-11-12T00:00:00Z');
  const service=createPostings({providers:[['test','Test']],now:()=>clock,fetcher:async()=>{count++;return Response.json({jobs:[raw(1),raw(2,{location:{name:'Tokyo'}}),raw(3,{internal_job_id:null}),raw(4,{title:'Expression of Interest: Engineer'}),raw(5,{application_deadline:'2026-01-01'}),raw(6,{title:'Marketing Manager'})]});}});
