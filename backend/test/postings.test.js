@@ -4,6 +4,12 @@ import {createPostings,plainText} from '../src/postings.js';
 import {createApp} from '../src/app.js';
 import {config} from '../src/common.js';
 const raw=(id,extra={})=>({id,internal_job_id:id,title:'Software Engineer',location:{name:'Seoul, Korea'},absolute_url:'https://job-boards.greenhouse.io/test/jobs/'+id,content:'&lt;p&gt;Build APIs &amp;amp; test systems&lt;/p&gt;',...extra});
+test('posting pages contain ten unique entries and preserve the final partial page',async()=>{
+ const service=createPostings({providers:[['test','Test']],fetcher:async()=>Response.json({jobs:Array.from({length:25},(_,i)=>raw(i+1))})});
+ const first=await service.list(new URLSearchParams()),second=await service.list(new URLSearchParams({offset:'10'})),third=await service.list(new URLSearchParams({offset:'20'}));
+ assert.equal(first.limit,10);assert.equal(first.items.length,10);assert.equal(second.items.length,10);assert.equal(third.items.length,5);
+ assert.equal(new Set([...first.items,...second.items,...third.items].map(x=>x.id)).size,25);
+});
 test('Kakao public roles exclude private/closed/expired posts and verify detail ID',async()=>{
  const job={realId:'P-100',jobOfferTitle:'보안 엔지니어',companyName:'카카오',locationName:'판교',useFlag:true,statusCode:'PROGRESS',privateFlag:false,closeFlag:false,endDate:'2026-11-13T00:00:00',workContentDesc:'<p>접근 제어 운영</p>',qualification:'보안 지식'};
  const service=createPostings({providers:[['kakao','카카오']],now:()=>Date.parse('2026-11-12T00:00:00Z'),fetcher:async url=>Response.json(url.includes('job-detail')?job:{totalPage:1,jobList:[job,{...job,realId:'P-101',privateFlag:true},{...job,realId:'P-102',closeFlag:true},{...job,realId:'P-103',endDate:'2026-11-12T00:00:00'}]})});

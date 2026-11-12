@@ -52,7 +52,7 @@ export function createPostings({fetcher=fetch,now=Date.now,providers=boards}={})
      const sort=params.get('sort')||'default';if(!['default','deadline','recent'].includes(sort))fail(400,'INVALID_INPUT','정렬 조건을 확인해 주세요.');
      const filters=Object.fromEntries(['q','company','category','region','experience'].map(k=>[k,(params.get(k)||'').trim()]));
      if(Object.values(filters).some(v=>v.length>100)||!/^\d{1,6}$/.test(params.get('offset')||'0'))fail(400,'INVALID_INPUT','검색 조건을 확인해 주세요.');
-     const s=await snapshot(),offset=Number(params.get('offset')||0),limit=12;
+     const s=await snapshot(),offset=Number(params.get('offset')||0),limit=10;
      const all=s.items.filter(p=>!p.deadline||Date.parse(p.deadline)>now());
      const items=all.filter(p=>(!filters.q||`${p.title} ${p.companyName}`.toLowerCase().includes(filters.q.toLowerCase()))&&(!filters.company||p.board===filters.company)&&(!filters.category||p.category===filters.category)&&(!filters.region||p.location.toLowerCase().includes(filters.region.toLowerCase()))&&(!filters.experience||p.experience===filters.experience));
      if(sort==='deadline')items.sort((a,b)=>(a.deadline?Date.parse(a.deadline):Infinity)-(b.deadline?Date.parse(b.deadline):Infinity));
