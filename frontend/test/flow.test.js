@@ -139,3 +139,20 @@ test('live posting filters and selection carry posting context into question req
  h.input('resume','가상 경험');h.click('분석하기');await h.wait(()=>!h.d.getElementById('generate').disabled);h.click('예상 질문');await h.screen('S3');
  assert.equal(sent.postingId,'test:1');assert.equal(sent.companyId,'hiring-test');
 });
+
+test('hiring directory removes manual company selectors and replaces ten rows per numbered page',async t=>{
+ const offsets=[];
+ const h=await setup(t,url=>{
+  if(url==='/api/health')return Promise.resolve(Response.json({data:{postingsEnabled:true}}));
+  if(url.startsWith('/api/postings?')){
+   const offset=Number(new URL(url,'http://localhost').searchParams.get('offset'));offsets.push(offset);
+   return Promise.resolve(Response.json({data:{items:Array.from({length:Math.min(10,25-offset)},(_,i)=>({id:'kakao:P-'+(offset+i),board:'kakao',companyName:'카카오',title:'공고 '+(offset+i+1),category:'개발',location:'판교',experience:'원문 확인'})),total:25,limit:10,offset,checkedAt:'2026-11-12',failedBoards:[],companies:[{id:'kakao',name:'카카오'}],categories:['개발']}}));
+  }
+ });
+ h.click('내 면접');await h.screen('S1');await h.wait(()=>h.d.querySelectorAll('.posting-row').length===10);
+ assert.equal(h.d.getElementById('company'),null);assert.equal(h.d.getElementById('job'),null);
+ assert.ok(h.d.querySelector('.posting-row img').src.endsWith('/logos/kakao.ico'));
+ h.d.querySelector('[aria-label="2 페이지"]').click();await h.wait(()=>h.d.querySelector('.posting-title-button')?.textContent==='공고 11');assert.equal(h.d.querySelectorAll('.posting-row').length,10);
+ h.d.querySelector('[aria-label="3 페이지"]').click();await h.wait(()=>h.d.querySelectorAll('.posting-row').length===5);assert.equal(h.d.querySelector('.posting-title-button').textContent,'공고 21');
+ assert.deepEqual(offsets,[0,10,20]);assert.equal(h.d.querySelector('[aria-label="다음 페이지"]').disabled,true);
+});

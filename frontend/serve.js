@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 const assets = {'/':['index.html','text/html'],'/index.html':['index.html','text/html'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']};
+for(const [name,ext] of Object.entries({kakao:'ico',naver:'ico',coupang:'ico',moloco:'png',sendbird:'svg',riotgames:'png','2k':'png'}))assets['/logos/'+name+'.'+ext]=['logos/'+name+'.'+ext,ext==='svg'?'image/svg+xml':ext==='png'?'image/png':'image/x-icon'];
 export function createFrontendServer(backend = process.env.BACKEND_URL || 'http://127.0.0.1:3001') {
   const target = new URL(backend);
   if(target.protocol!=='http:')throw new Error('BACKEND_URL must be an internal HTTP service');

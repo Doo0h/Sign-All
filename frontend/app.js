@@ -1,7 +1,7 @@
 // Sign-All 프론트엔드 (프레임워크 없는 단일 파일). 화면 흐름: docs/screen-flow.md
 const BASE = ''; // 개발·Docker·서버 모두 같은 출처의 /api 프록시를 사용한다.
 let serverInfo = null;
-const STEPS = { S0: '시작', S1: '기업·직무 선택', S2: '자기소개서', S3: '질문 목록', S4: '질문 연습', S5: '종료' };
+const STEPS = { S0: '시작', S1: '채용공고 선택', S2: '자기소개서', S3: '질문 목록', S4: '질문 연습', S5: '종료' };
 
 // 토큰은 메모리(이 객체)에만 둔다. URL·storage·콘솔에 남기지 않는다.
 const fresh = () => ({
@@ -101,7 +101,7 @@ function render(focusTitle = true) {
   main.dataset.screen = st.screen;
   const idx = Object.keys(STEPS).indexOf(st.screen);
   $('step').textContent = idx >= 0 ? `${idx + 1} / 6 단계 · ${STEPS[st.screen]}` : '';
-  const stages = ['연습 안내', '관심 기업 선택', '지원서 준비', '면접 연습', '연습 완료'];
+  const stages = ['연습 안내', '채용공고 선택', '지원서 준비', '면접 연습', '연습 완료'];
   const current = ({ S0: 0, S1: 1, S2: 2, S3: 3, S4: 3, S5: 4 })[st.screen];
   $('step').textContent = current == null ? '연습 다시 시작' : `${current + 1} / 5 단계`;
   $('progress').replaceChildren(...stages.map((label, i) =>
@@ -141,13 +141,14 @@ function S0() {
         h('div',{className:'preview-check'},'✓  준비하는 만큼, 한 걸음 더'))),
     h('div', { className: 'feature-grid' },
       feature('01', '관심 기업부터 탐색', '공식 기업 정보를 확인하고 연습할 직무를 선택해요.'),
-      feature('02', '한 질문씩 차근차근', '기업·직무를 선택하고 관련 질문에 글로 답해요.'),
+      feature('02', '한 질문씩 차근차근', '채용공고를 선택하고 관련 질문에 글로 답해요.'),
       feature('03', '나의 문서로 시작', 'PDF·HWP·HWPX·DOCX·TXT에서 글을 불러와 직접 확인해요.')),
     h('p', { className: 'privacy-note' }, '입력한 자기소개서와 답변은 서버에 영구 저장되지 않으며, 연습 종료 시 화면에서 지워집니다. 이름·연락처 등 개인정보는 제외해 주세요. 수어 자료는 질문의 핵심 단어를 이해하기 위한 참고 자료입니다.'),
   ];
 }
 
 async function loadLists() {
+  if(serverInfo?.postingsEnabled)return;
   say('기업과 직무 목록을 불러오고 있습니다.');
   const [c, j] = await Promise.all([api('/api/companies?limit=100'), api('/api/jobs?limit=100')]);
   st.companies = c.items; st.jobs = j.items;
@@ -156,6 +157,7 @@ async function loadLists() {
 // ---------- S1 기업·직무
 function S1() {
   if(st.posting){st.posting=null;st.companyId='';st.jobId='';}
+  if(serverInfo?.postingsEnabled)return [title('채용공고'),postingBrowser()];
   const opts = (items, cur) => [
     h('option', { value: '' }, '선택해 주세요'),
     ...items.map((i) => h('option', { value: i.id, selected: i.id === cur }, i.name)),
@@ -201,7 +203,7 @@ function S1() {
   ];
 }
 function postingBrowser(){
-  const results=h('div',{className:'posting-grid posting-list'}),status=h('p',{role:'status'}),selected=h('aside',{className:'posting-selected','aria-label':'선택한 공고 상세'},h('h4',{},'관심 공고를 선택하세요'),h('p',{},'목록에서 공고를 선택하면 담당업무와 지원자격을 여기에서 확인할 수 있습니다.'));
+  const results=h('div',{className:'posting-grid posting-list',role:'list','aria-label':'채용공고 목록'}),status=h('p',{role:'status'}),selected=h('aside',{className:'posting-selected',hidden:true,'aria-label':'선택한 공고 상세'});
   const q=h('input',{type:'search',placeholder:'기업명 또는 공고 제목',maxLength:100,'aria-label':'채용 공고 검색'});
   const company=h('select',{'aria-label':'채용 기업'},h('option',{value:''},'전체 기업'));
   const category=h('select',{'aria-label':'채용 직무'},h('option',{value:''},'전체 직무'));
@@ -209,10 +211,10 @@ function postingBrowser(){
   const experience=h('select',{'aria-label':'경력 표현'},...['','신입·인턴 명시','경력 표현 포함','원문 확인'].map(v=>h('option',{value:v},v||'전체 경력')));
   const sort=h('select',{'aria-label':'공고 정렬'},h('option',{value:'default'},'기업별 보기'),h('option',{value:'deadline'},'마감 임박순'),h('option',{value:'recent'},'최근 갱신순'));
   const chips=h('div',{className:'company-chips','aria-label':'기업 바로 선택'});
-  const more=h('button',{type:'button'},'공고 더 보기');let offset=0,version=0,initialized=false;
-  const panel=h('section',{className:'hiring-panel'},h('p',{className:'eyebrow'},'FIND YOUR NEXT ROLE'),h('h3',{},'채용공고 둘러보기'),h('p',{className:'posting-notice'},'카카오·네이버와 연결 기업의 공식 공고를 모았습니다. 공고 선택 → 상세 확인 → 면접 연습 순서로 준비하세요. 전체 기업을 포괄하는 목록은 아닙니다.'));
-  async function search(append=false){
-    const request=++version;if(!append){offset=0;results.replaceChildren();}more.disabled=true;status.textContent='공식 채용 게시판을 확인하고 있습니다…';
+  const pages=h('nav',{className:'posting-pages','aria-label':'채용공고 페이지'});let offset=0,version=0,initialized=false;
+  const panel=h('section',{className:'hiring-panel hiring-table'},h('p',{className:'posting-notice'},'공식 채용공고를 확인하고 나에게 맞는 면접을 준비하세요. 한 페이지에 10개씩 표시합니다.'));
+  async function search(page=1){
+    const request=++version;offset=(page-1)*10;results.replaceChildren();pages.replaceChildren();selected.hidden=true;status.textContent='공식 채용 게시판을 확인하고 있습니다…';
     try{
       const params=new URLSearchParams({q:q.value,company:company.value,category:category.value,region:region.value,experience:experience.value,sort:sort.value,offset:String(offset)});
       const data=await api('/api/postings?'+params);
@@ -223,21 +225,29 @@ function postingBrowser(){
         const pick=h('button',{type:'button',className:'posting-pick','aria-pressed':'false',onclick:()=>run(pick,'공고 원문을 확인하고 있습니다.',async()=>{
           const r=await api('/api/postings/select',{postingId:p.id});
           if(!panel.isConnected)return;
+          selected.hidden=false;
           results.querySelectorAll('.posting-pick').forEach(b=>b.setAttribute('aria-pressed',String(b===pick)));
           const heading=h('h4',{tabIndex:-1},r.posting.title);
-          selected.replaceChildren(h('p',{className:'posting-company'},r.posting.companyName),heading,h('p',{className:'posting-meta'},r.posting.location),h('p',{className:'posting-description'},r.posting.description||'상세 내용은 공고 원문에서 확인하세요.'),h('p',{className:'posting-notice'},'공고 본문의 일부를 표시합니다. 정확한 자격요건과 마감은 원문을 확인하세요.'),h('a',{href:r.posting.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'공식 공고 원문 ↗'),h('button',{className:'primary',type:'button',onclick:()=>{st.posting=r.posting;st.companyId=r.company.id;st.jobId=r.job.id;resetQuestions();go('S2');}},'이 공고로 면접 연습 →'));
+          selected.replaceChildren(h('button',{type:'button',className:'posting-close',onclick:()=>{selected.hidden=true;pick.focus();}},'상세 닫기'),h('p',{className:'posting-company'},r.posting.companyName),heading,h('p',{className:'posting-meta'},r.posting.location),h('p',{className:'posting-description'},r.posting.description||'상세 내용은 공고 원문에서 확인하세요.'),h('p',{className:'posting-notice'},'공고 본문의 일부를 표시합니다. 정확한 자격요건과 마감은 원문을 확인하세요.'),h('a',{href:r.posting.sourceUrl,target:'_blank',rel:'noopener noreferrer'},'공식 공고 원문 ↗'),h('button',{className:'primary',type:'button',onclick:()=>{st.posting=r.posting;st.companyId=r.company.id;st.jobId=r.job.id;resetQuestions();go('S2');}},'이 공고로 면접 연습 →'));
           heading.focus({preventScroll:true});
-          if(window.matchMedia?.('(max-width:1250px)').matches)selected.scrollIntoView({block:'nearest'});
+          selected.scrollIntoView?.({block:'nearest'});
         })},'공고 선택');
-        results.append(h('article',{className:'posting-card posting-row'},h('div',{className:'posting-row-company'},h('span',{className:'posting-initial','aria-hidden':'true'},p.companyName.slice(0,1)),h('p',{className:'posting-company'},p.companyName)),h('div',{className:'posting-row-info'},h('h4',{},p.title),h('p',{className:'posting-meta'},p.category+' · '+p.location),h('p',{className:'posting-meta'},p.experience)),h('div',{className:'posting-row-action'},h('p',{className:'posting-deadline'},p.deadline?'마감 '+new Date(p.deadline).toLocaleDateString('ko-KR'):'마감일 원문 확인'),pick)));
+        const logos={kakao:'ico',naver:'ico',coupang:'ico',moloco:'png',sendbird:'svg',riotgames:'png','2k':'png'};
+        const fallback=h('span',{className:'posting-initial','aria-hidden':'true'},p.companyName.slice(0,1));
+        const logo=logos[p.board]?h('img',{src:'/logos/'+p.board+'.'+logos[p.board],alt:p.companyName+' 기업 이미지',width:52,height:52,loading:'lazy',onerror:e=>e.target.replaceWith(fallback)}):fallback;
+        const titleButton=h('button',{type:'button',className:'posting-title-button',onclick:()=>pick.click()},p.title);
+        results.append(h('article',{className:'posting-card posting-row',role:'listitem'},h('div',{className:'posting-row-company'},logo,h('p',{className:'posting-company'},p.companyName)),h('div',{className:'posting-row-info'},h('h4',{},titleButton),h('p',{className:'posting-meta'},p.category)),h('p',{className:'posting-cell'},p.experience),h('p',{className:'posting-cell'},p.location),h('div',{className:'posting-row-action'},h('p',{className:'posting-deadline'},p.deadline?new Date(p.deadline).toLocaleDateString('ko-KR'):'원문 확인'),pick)));
       }
-      offset+=data.items.length;more.hidden=offset>=data.total;
-      status.textContent=`${data.total}개 공고 · ${offset}개 표시 · 확인 ${new Date(data.checkedAt).toLocaleString('ko-KR')}`+(data.failedBoards.length?' · 일부 기업 연결 실패: '+data.failedBoards.join(', '):'');
+      const totalPages=Math.ceil(data.total/10),start=Math.floor((page-1)/5)*5+1;
+      const pageButton=(label,n,disabled=false)=>h('button',{type:'button',disabled,'aria-label':label==='이전'||label==='다음'?label+' 페이지':n+' 페이지','aria-current':n===page?'page':'false',onclick:()=>search(n)},label);
+      if(totalPages>1){pages.append(pageButton('이전',page-1,page===1));for(let n=start;n<=Math.min(start+4,totalPages);n++)pages.append(pageButton(String(n),n));pages.append(pageButton('다음',page+1,page===totalPages));}
+      status.textContent=`검색 결과 ${data.total}건 · ${page} / ${Math.max(1,totalPages)} 페이지 · 확인 ${new Date(data.checkedAt).toLocaleString('ko-KR')}`+(data.failedBoards.length?' · 일부 기업 연결 실패: '+data.failedBoards.join(', '):'');
       if(!data.total)results.append(h('p',{},'조건에 맞는 공고가 없습니다. 검색 조건을 바꿔 보세요.'));
-    }catch(e){if(request===version&&panel.isConnected){status.textContent=e.message;more.hidden=true;}}finally{if(request===version)more.disabled=false;}
+    }catch(e){if(request===version&&panel.isConnected)status.textContent=e.message;}
   }
   const form=h('form',{className:'posting-filters',onsubmit:e=>{e.preventDefault();search();}},q,company,category,region,experience,sort,h('button',{type:'submit'},'공고 검색'));
-  more.addEventListener('click',()=>search(true));panel.append(form,chips,status,h('div',{className:'posting-browser-body'},h('div',{},results,more),selected));
+  const columns=h('div',{className:'posting-columns','aria-hidden':'true'},...['기업명','공고명 / 직무','경력','근무지역','마감일'].map(t=>h('span',{},t)));
+  panel.append(form,chips,status,columns,results,pages,selected);
   queueMicrotask(()=>{if(panel.isConnected)search();});return panel;
 }
 const hasFeedback = () => Object.keys(st.feedbacks).length > 0;
@@ -325,7 +335,7 @@ function S3() {
   const end = h('button', { onclick: () => run(end, '종료하는 중…', endSession) }, '연습 종료');
   return [
     title('한 질문씩 연습해 볼까요?'), h('p', { className: 'lead' }, '나의 경험을 구체적으로 전달하는 데 집중해 보세요.'), summaryLine(), list,
-    h('button', { onclick: back('S1', '기업·직무를 바꾸면 지금까지 만든 질문과 받은 피드백이 모두 지워집니다. 계속할까요?') }, '기업·직무 변경'),
+    h('button', { onclick: back('S1', '공고를 바꾸면 지금까지 만든 질문과 받은 피드백이 모두 지워집니다. 계속할까요?') }, '채용공고 다시 선택'),
     h('button', { onclick: back('S2', '자기소개서를 수정하면 분석, 질문, 받은 피드백이 모두 지워집니다. 계속할까요?') }, '자기소개서 수정'),
     end,
   ];

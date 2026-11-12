@@ -10,6 +10,7 @@ test('same-origin proxy forwards API and uploads, hides server files, rejects ab
  const server=createFrontendServer('http://127.0.0.1:'+backend.address().port);await listen(server);t.after(()=>new Promise(r=>server.close(r)));
  const base='http://127.0.0.1:'+server.address().port;
  assert.equal((await fetch(base+'/')).status,200);assert.equal((await fetch(base+'/serve.js')).status,404);assert.equal((await fetch(base+'/.env')).status,404);
+ const logo=await fetch(base+'/logos/kakao.ico');assert.equal(logo.status,200);assert.match(logo.headers.get('content-type'),/image\/x-icon/);assert.equal((await fetch(base+'/logos/SOURCES.md')).status,404);
  const result=await fetch(base+'/api/documents/extract',{method:'POST',body:'synthetic',headers:{'Content-Type':'application/octet-stream','X-File-Name':'resume.txt','X-Session-Token':'synthetic-token','X-Forwarded-For':'fake'}});
  const data=await result.json();assert.equal(data.size,9);assert.equal(data.token,'synthetic-token');assert.notEqual(data.ip,'fake');
  assert.match(result.headers.get('content-security-policy'),/frame-ancestors 'none'/);

@@ -99,3 +99,32 @@ html{overflow-y:scroll}
 @media(min-width:721px) and (max-width:1150px){
   .workspace{grid-template-columns:230px minmax(0,1fr)}
 }
+
+/* Ten-row recruitment directory, with detail below the selected list. */
+.hiring-panel.hiring-table{background:#fff;border:0;border-radius:0;padding:0;margin:0}
+.hiring-table .posting-filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border-block:1px solid var(--line);padding:18px 0;margin-top:22px}
+.hiring-table .posting-filters input[type=search]{width:220px;flex:1;min-width:150px}
+.hiring-table .posting-filters select{width:auto;max-width:190px;min-height:44px;background:white;border-color:#e4e9e6}
+.hiring-table .company-chips{margin:16px 0 28px}
+.hiring-table>p[role=status]{font-size:13px;margin:24px 0 14px}
+.posting-columns,.hiring-table .posting-card.posting-row{display:grid;grid-template-columns:minmax(140px,1.15fr) minmax(220px,2.5fr) minmax(90px,.8fr) minmax(90px,.8fr) 110px;gap:18px;align-items:center}
+.posting-columns{padding:17px 20px;border-top:1px solid #9eaca5;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:#41574d}
+.hiring-table .posting-list{border:0;border-radius:0}
+.hiring-table .posting-card.posting-row{padding:22px 20px;min-height:110px;background:#fff}
+.hiring-table .posting-row:hover{background:#fafcfb}
+.hiring-table .posting-row:has([aria-pressed=true]){background:#f0f7f2}
+.hiring-table .posting-row-company{display:flex;align-items:center;gap:14px;min-width:0}
+.posting-row-company img{width:52px;height:52px;object-fit:contain;flex-shrink:0;border-radius:4px;background:white}
+.hiring-table .posting-row-company .posting-company{margin:0;color:#263e32;font-size:13px;line-height:1.6}
+.hiring-table .posting-row-info h4{margin:0 0 6px;font-size:15px}
+.hiring-table .posting-title-button{padding:0;margin:0;border:0;background:transparent;color:#20332e;text-align:left;font-size:15px;line-height:1.6;font-weight:600;width:auto}
+.hiring-table .posting-title-button:hover{color:var(--green);text-decoration:underline;text-underline-offset:4px}
+.posting-cell{font-size:12px;color:#53675c;line-height:1.7;margin:0;overflow-wrap:anywhere}
+.hiring-table .posting-row-action button{background:#fff;font-size:11px;padding:6px 10px;margin-top:8px}
+.posting-pages{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin:28px 0}
+.posting-pages button{margin:0;min-width:38px;padding:8px 12px;border-color:transparent;font-weight:500}
+.posting-pages button[aria-current=page]{color:#fff;background:var(--green);font-weight:700}
+.hiring-table .posting-selected{position:static;margin-top:24px;padding:26px;background:#f8fbf8}
+.hiring-table .posting-selected .posting-close{width:auto;margin:0 0 12px auto;background:white;font-size:12px}
+@media(max-width:1100px){.posting-columns{display:none}.hiring-table .posting-card.posting-row{grid-template-columns:140px minmax(0,1fr) 110px;gap:10px 16px}.posting-row-company{grid-row:span 2}.posting-row-info{grid-column:2}.posting-row-action{grid-column:3;grid-row:1 / span 3}.posting-cell{grid-column:2}}
+@media(max-width:600px){.hiring-table .posting-card.posting-row{grid-template-columns:minmax(0,1fr) 95px;padding:18px 6px}.hiring-table .posting-row-company{grid-column:1 / -1;grid-row:auto}.hiring-table .posting-row-info,.hiring-table .posting-cell{grid-column:1}.hiring-table .posting-row-action{grid-column:2;grid-row:2 / span 3;display:block}.hiring-table .posting-filters select{max-width:none;flex:1}.hiring-table .posting-selected{padding:16px}}
