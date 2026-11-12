@@ -102,6 +102,12 @@ html{overflow-y:scroll}
 
 /* Ten-row recruitment directory, with detail below the selected list. */
 .hiring-panel.hiring-table{background:#fff;border:0;border-radius:0;padding:0;margin:0}
+.enterprise-chips{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 12px}
+.enterprise-chips button{display:flex;align-items:center;gap:9px;padding:12px 19px;margin:0;border-radius:28px;background:#fff;font-size:14px;border:1px solid #dce4df}
+.enterprise-chips button[aria-pressed=true]{background:#eaf5ed;color:#155b45;border-color:#6cae8d;box-shadow:0 2px 7px #176b5810}
+.enterprise-count{font-size:11px;background:#f1f4f2;border-radius:10px;padding:1px 7px;color:#597063}
+.enterprise-notice{font-size:12px;color:var(--muted);margin:0 0 18px;line-height:1.7}
+.organization-badge{display:inline-block;font-size:10px;color:#52735f;background:#eff5ef;border-radius:4px;padding:2px 5px;margin-top:5px}
 .hiring-table .posting-filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border-block:1px solid var(--line);padding:18px 0;margin-top:22px}
 .hiring-table .posting-filters input[type=search]{width:220px;flex:1;min-width:150px}
 .hiring-table .posting-filters select{width:auto;max-width:190px;min-height:44px;background:white;border-color:#e4e9e6}
