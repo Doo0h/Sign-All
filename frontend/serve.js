@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 const assets = {'/':['index.html','text/html'],'/index.html':['index.html','text/html'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']};
 assets['/public-logos.js']=['public-logos.js','text/javascript'];
+assets['/avatar-player.js']=['avatar-player.js','text/javascript'];
 const publicLogos=JSON.parse(readFileSync(new URL('./logos/public-map.json',import.meta.url),'utf8'));
 for(const file of Object.values(publicLogos)){
   if(!/^public-c\d+\.(png|jpg|gif)$/.test(file))throw Error('Invalid logo filename');
@@ -33,7 +34,7 @@ export function createFrontendServer(backend = process.env.BACKEND_URL || 'http:
       res.on('close',()=>upstream.destroy());req.pipe(upstream);return;
     }
     if(!['GET','HEAD'].includes(req.method)){res.writeHead(405,{Allow:'GET, HEAD'}).end();return;}
-    const asset=assets[path];if(!asset){res.writeHead(404).end('Not found');return;}
+    const asset=assets[path] || (/^\/avatars\/[a-z0-9_-]+\.glb$/.test(path)?[path.slice(1),'model/gltf-binary']:null);if(!asset){res.writeHead(404).end('Not found');return;}
     try {const data=await readFile(new URL(asset[0],import.meta.url));res.writeHead(200,{'Content-Type':asset[1]+'; charset=utf-8'}).end(req.method==='HEAD'?undefined:data);}
     catch {res.writeHead(500).end('Unavailable');}
   });

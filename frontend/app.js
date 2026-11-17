@@ -352,6 +352,18 @@ function S3() {
 function S4() {
   const q = st.questions[st.current];
   const qid = q.questionId;
+  const avatarBody=h('div',{className:'avatar-body'});
+  const avatarStatus=h('p',{role:'status'},'질문 전체를 표현하는 한국수어 아바타입니다. 동작 자료의 준비 상태를 확인해 주세요.');
+  const avatarButton=h('button',{type:'button',onclick:()=>run(avatarButton,'아바타 자료를 확인하고 있습니다.',async()=>{
+    const data=await api('/api/interview/avatar',{questionId:qid});
+    if(!avatarBody.isConnected)return;
+    if(data.status!=='ready'){avatarStatus.textContent=data.message;return;}
+    avatarStatus.textContent='동작 자료를 불러오고 있습니다.';
+    try{const {mountAvatar}=await import('./avatar-player.js');await mountAvatar(avatarBody,data);
+      if(avatarBody.isConnected){avatarStatus.textContent='검토한 질문 표현 · '+data.reviewedAt+' · '+data.source;avatarButton.hidden=true;}
+    }catch{if(avatarBody.isConnected){avatarBody.replaceChildren();avatarStatus.textContent='아바타를 불러오지 못했습니다. 다시 시도하거나 질문 텍스트와 단어별 사전을 이용해 주세요.';}}
+  })},'수어 아바타 보기');
+  const avatarPanel=h('section',{className:'avatar-panel','aria-label':'질문 수어 아바타'},h('h3',{},'질문 수어 아바타'),avatarStatus,avatarButton,avatarBody);
   const fbBox = h('section', { 'aria-live': 'polite' });
   const ta = h('textarea', { id: 'answer', maxLength: 5000, value: st.answers[qid] ?? '', placeholder: '상황 → 내가 한 행동 → 결과 순서로 경험을 적어 보세요.' });
   const count = h('p', { className: 'counter' }, `${ta.value.length} / 5000자`);
@@ -421,7 +433,7 @@ function S4() {
   return [
     title('질문 연습'),
     h('p', {}, `${st.current + 1} / ${st.questions.length}`),
-    h('p', { className: 'question-text' }, h('strong', {}, q.text)),
+    h('div',{className:'question-avatar-layout'},h('p', { className: 'question-text' }, h('strong', {}, q.text)),avatarPanel),
     h('section', {className:'sign-panel'}, h('h3', {}, '단어 이해를 돕는 수어 사전'),h('p',{className:'sign-intro'},'궁금한 단어를 선택하면 사전 참고 자료를 확인할 수 있어요.'),h('div',{className:'sign-card-grid'},kwBtns),h('p',{className:'sign-disclaimer'},'질문 전체 번역이 아닌 단어별 참고 자료입니다. 질문 속 의미와 맞는지 원문에서 확인하세요.')),
     h('section', {}, h('label', { htmlFor: 'answer' }, '내 답변'), ta, count, fb),
     fbBox,

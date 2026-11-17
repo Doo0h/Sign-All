@@ -93,6 +93,14 @@ test('전문어 설명과 관련 수어, 미확보 표현을 표시하고 카드
   assert.ok(h.d.getElementById('answer'));
 });
 
+test('avatar pending state preserves text practice without loading unreviewed motion', async t=>{
+ const h=await setup(t,url=>url==='/api/interview/avatar'?Promise.resolve(new Response(JSON.stringify({data:{status:'pending',message:'동작 자료를 준비 중입니다.'}}))):undefined);
+ await h.questions();h.click('연습하기');await h.screen('S4');h.input('answer','작성 중인 답변');h.click('수어 아바타 보기');
+ await h.wait(()=>h.d.body.textContent.includes('동작 자료를 준비 중입니다.'));
+ assert.equal(h.d.getElementById('answer').value,'작성 중인 답변');
+ assert.equal(h.d.querySelector('canvas'),null);assert.ok(h.d.querySelector('.sign-panel'));
+});
+
 test('분석 대기 중 중복 호출 차단, 입력 수정으로 분석 무효화', async t => {
   let release, calls=0;
   const h=await setup(t,(url)=>{
