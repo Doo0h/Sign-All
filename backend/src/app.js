@@ -7,6 +7,7 @@ import {extractDocument,documentTypes} from './documents.js';
 import {isIP} from 'node:net';
 import {createPostings} from './postings.js';
 import {searchSigns} from './sign-search.js';
+import {avatarForQuestion} from './avatar.js';
 
 export function createApp(options={}) {
   const cfg=options.config || config();
@@ -158,6 +159,12 @@ export function createApp(options={}) {
           s.questions=output.questions.map(q=>({...q,questionId:randomUUID(),jobId:job.id,companyId:company.id,...(selected?{jobSnapshot:job,sourceSnapshot:context.source}:{})}));
           result={questions:s.questions.map(({jobSnapshot,sourceSnapshot,...q})=>({...q,references:sourceSnapshot?[sourceSnapshot].filter(r=>q.referenceIds.includes(r.id)):referenceObjects(q.referenceIds)}))};
         }finally{s.questionsBusy=false;}
+      } else if(req.method==='POST' && path==='/api/interview/avatar'){
+        const s=getSession(req),b=await body(req);fields(b,['questionId']);
+        const questionId=id(b.questionId,'questionId');
+        const question=s.questions.find(q=>q.questionId===questionId);
+        if(!question)fail(404,'RESOURCE_NOT_FOUND','현재 세션의 질문을 찾을 수 없습니다.');
+        result=avatarForQuestion(question);
       } else if(req.method==='POST' && path==='/api/interview/feedback'){
         const s=getSession(req),b=await body(req);fields(b,['questionId','answerText']);
         const questionId=id(b.questionId,'questionId'),answerText=text(b.answerText,'answerText',5000);

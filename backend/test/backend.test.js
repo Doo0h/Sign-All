@@ -36,6 +36,9 @@ test('다른 세션의 분석·질문 접근 거절',async t=>{
  assert.equal((await h.request('/api/interview/questions',{companyId:'demo-company',jobId:'demo-job',analysisId:flow.a.body.data.analysisId},b)).status,404);
  assert.equal((await h.request('/api/interview/feedback',{questionId:flow.id,answerText:'답변'},b)).status,404);
  assert.equal((await h.request('/api/resume/analyze',{resumeText:'내용'})).status,401);
+ assert.equal((await h.request('/api/interview/avatar',{questionId:flow.id},a)).body.data.status,'pending');
+ assert.equal((await h.request('/api/interview/avatar',{questionId:flow.id},b)).status,404);
+ assert.equal((await h.request('/api/interview/avatar',{questionId:flow.id})).status,401);
 });
 test('재분석·종료 후 맥락 무효화',async t=>{
  const h=await setup(t),token=await h.session(),flow=await prepare(h,token);
