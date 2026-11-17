@@ -80,6 +80,19 @@ test('마지막 질문 피드백에 null 없이 완료 버튼을 표시하고 �
   assert.ok(h.d.body.textContent.includes('면접 연습을 마쳤습니다'));
 });
 
+test('전문어 설명과 관련 수어, 미확보 표현을 표시하고 카드를 접는다', async t => {
+  const h=await setup(t,url=>url.startsWith('/api/signs?')?Promise.resolve(new Response(JSON.stringify({data:{
+    explanation:{term:'전력 IT',description:'전력 분야에 정보기술을 활용합니다.',relatedTerms:['전기','정보통신기술']},
+    missingTerms:['전체 표현'],notice:'단어별 참고 자료입니다.',items:[{term:'전기',sourcePageUrl:'https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6182&top_category=CTE'}]
+  }}))):undefined);
+  await h.questions();h.click('연습하기');await h.screen('S4');h.click('수어 자료 보기');
+  await h.wait(()=>h.d.body.textContent.includes('전력 분야에 정보기술'));
+  assert.ok(h.d.body.textContent.includes('아직 연결된 수어 자료가 없는 표현: 전체 표현'));
+  assert.ok(h.d.querySelector('.sign-card-result a').textContent.includes('전기 수어 영상'));
+  h.d.querySelector('.sign-card-button').click();assert.equal(h.d.querySelector('.sign-card-result').hidden,true);
+  assert.ok(h.d.getElementById('answer'));
+});
+
 test('분석 대기 중 중복 호출 차단, 입력 수정으로 분석 무효화', async t => {
   let release, calls=0;
   const h=await setup(t,(url)=>{
