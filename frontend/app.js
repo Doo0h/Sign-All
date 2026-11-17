@@ -239,7 +239,9 @@ function postingBrowser(){
         })},'공고 선택');
         const logos={kakao:'ico',naver:'ico',coupang:'ico',moloco:'png',sendbird:'svg',riotgames:'png','2k':'png'};
         const fallback=h('span',{className:'posting-initial','aria-hidden':'true'},p.companyName.slice(0,1));
-        const logo=logos[p.board]?h('img',{src:'/logos/'+p.board+'.'+logos[p.board],alt:p.companyName+' 기업 이미지',width:52,height:52,loading:'lazy',onerror:e=>e.target.replaceWith(fallback)}):fallback;
+        const publicLogo=p.board==='alio'?window.SIGNALL_PUBLIC_LOGOS?.[p.companyName]:null;
+        const logoFile=publicLogo||(logos[p.board]?p.board+'.'+logos[p.board]:null);
+        const logo=logoFile?h('img',{src:'/logos/'+logoFile,alt:p.companyName+' 로고',width:52,height:52,loading:'lazy',onerror:e=>e.target.replaceWith(fallback)}):fallback;
         const titleButton=h('button',{type:'button',className:'posting-title-button',onclick:()=>pick.click()},p.title);
         results.append(h('article',{className:'posting-card posting-row',role:'listitem'},h('div',{className:'posting-row-company'},logo,h('div',{},h('p',{className:'posting-company'},p.companyName),p.organizationType?h('span',{className:'organization-badge'},p.organizationType):null)),h('div',{className:'posting-row-info'},h('h4',{},titleButton),h('p',{className:'posting-meta'},p.category)),h('p',{className:'posting-cell'},p.experience),h('p',{className:'posting-cell'},p.location),h('div',{className:'posting-row-action'},h('p',{className:'posting-deadline'},p.deadline?new Date(p.deadline).toLocaleDateString('ko-KR'):'원문 확인'),pick)));
       }
