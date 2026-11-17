@@ -451,6 +451,90 @@
       "semanticStatus": "unreviewed",
       "playbackStatus": "not-tested",
       "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-15506",
+      "sourceId": "ksl-dictionary",
+      "originalId": "15506",
+      "term": "보안",
+      "keywords": [
+        "보안"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=15506&top_category=SPE",
+      "checkedAt": "2026-11-17",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-7666",
+      "sourceId": "ksl-dictionary",
+      "originalId": "7666",
+      "term": "위험",
+      "keywords": [
+        "위험"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7666&top_category=CTE",
+      "checkedAt": "2026-11-17",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-6182",
+      "sourceId": "ksl-dictionary",
+      "originalId": "6182",
+      "term": "전기",
+      "keywords": [
+        "전기"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=6182&top_category=CTE",
+      "checkedAt": "2026-11-17",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-15730",
+      "sourceId": "ksl-dictionary",
+      "originalId": "15730",
+      "term": "정보통신기술",
+      "keywords": [
+        "정보통신기술"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=15730&top_category=SPE",
+      "checkedAt": "2026-11-17",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-8874",
+      "sourceId": "ksl-dictionary",
+      "originalId": "8874",
+      "term": "보호",
+      "keywords": [
+        "보호"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=8874&top_category=CTE",
+      "checkedAt": "2026-11-17",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-7527",
+      "sourceId": "ksl-dictionary",
+      "originalId": "7527",
+      "term": "고장",
+      "keywords": [
+        "고장"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7527&top_category=CTE",
+      "checkedAt": "2026-11-17",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
     }
   ]
 }
