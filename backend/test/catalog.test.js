@@ -19,8 +19,8 @@ test('curated references work with demo AI without fabricated NCS or video claim
  const compound=await get('/api/signs?keyword='+encodeURIComponent('문제 해결'));assert.deepEqual(compound.items.map(s=>s.term).sort(),['문제','해결']);
  const partial=await get('/api/signs?keyword='+encodeURIComponent('회사 지식'));assert.equal(partial.items[0].term,'회사');
  assert.equal((await get('/api/signs?keyword='+encodeURIComponent('무책임'))).items.length,0);
- const catalog=await get('/api/signs/catalog');assert.equal(catalog.total,21);assert.equal(catalog.items.length,12);
- const page2=await get('/api/signs/catalog?offset=12');assert.equal(page2.items.length,9);assert.ok(page2.items.every(s=>!catalog.items.some(first=>first.id===s.id)));
+ const catalog=await get('/api/signs/catalog');assert.equal(catalog.total,data.signs.length);assert.equal(catalog.items.length,12);
+ const page2=await get('/api/signs/catalog?offset=12');assert.equal(page2.items.length,Math.min(12,data.signs.length-12));assert.ok(page2.items.every(s=>!catalog.items.some(first=>first.id===s.id)));
  const companySign=await get('/api/signs/catalog?q='+encodeURIComponent('회사'));assert.equal(companySign.total,1);assert.equal(companySign.items[0].originalId,'11237');
  assert.equal((await get('/api/signs/catalog?q=missing')).total,0);
  assert.equal((await fetch(base+'/api/signs/catalog?offset=-1')).status,400);

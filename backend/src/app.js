@@ -6,6 +6,7 @@ import {createAI} from './ai.js';
 import {extractDocument,documentTypes} from './documents.js';
 import {isIP} from 'node:net';
 import {createPostings} from './postings.js';
+import {searchSigns} from './sign-search.js';
 
 export function createApp(options={}) {
   const cfg=options.config || config();
@@ -116,11 +117,7 @@ export function createApp(options={}) {
         const keyword=text(url.searchParams.get('keyword'),'keyword',100);
         const list=repo.list('signs');
         if(!list.length && cfg.mode==='live')fail(503,'REFERENCE_DATA_UNAVAILABLE','검증된 수어 자료가 아직 준비되지 않았습니다.');
-        const normalized=keyword.normalize('NFC');
-        const words=normalized.split(/[\s·,，/()]+/u).filter(Boolean);
-        const exact=list.filter(r=>[r.term,...r.keywords].some(v=>v.normalize('NFC')===normalized));
-        const items=(exact.length?exact:list.filter(r=>[r.term,...r.keywords].some(v=>words.includes(v.normalize('NFC'))))).slice(0,20);
-        result={items,matchStatus:items.length?'candidate':'not_found',notice:'문자열 검색 후보이며 질문 전체 번역이나 문맥상 의미 일치를 보장하지 않습니다.'};
+        result=searchSigns(list,keyword);
       } else if(req.method==='POST' && path==='/api/documents/extract'){
         getSession(req);
         if(extracting>=2)fail(503,'DOCUMENT_BUSY','다른 문서를 처리 중입니다. 잠시 후 다시 시도해 주세요.',undefined,true);
