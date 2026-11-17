@@ -360,12 +360,17 @@ function S4() {
   const showSign = (kw) => {
     const box = h('div', { id: 'sign-' + kw, className:'sign-card-result', 'aria-live':'polite' });
     const r = st.signs[kw];
+    if (r?.explanation) {
+      box.append(h('h4', {}, r.explanation.term), h('p', {}, r.explanation.description),
+        h('p', {className:'note'}, '관련 단어: '+r.explanation.relatedTerms.join(', ')));
+      if(r.missingTerms?.length)box.append(h('p', {}, '아직 연결된 수어 자료가 없는 표현: '+r.missingTerms.join(', ')));
+    }
     if (r === 'error') box.append(h('p', {}, '수어 자료를 불러오지 못했습니다. 답변 연습은 계속할 수 있습니다.'));
     else if (r && !r.items.length) box.append(h('p', {}, `'${kw}'에 해당하는 수어 자료를 찾지 못했습니다. 답변 연습은 계속할 수 있습니다.`));
     else if (r) {
-      box.append(h('p', { className: 'note' }, '참고용 후보 자료입니다. 질문 속 의미와 다를 수 있습니다.'),
+      box.append(h('p', { className: 'note' }, r.notice || '참고용 후보 자료입니다. 질문 속 의미와 다를 수 있습니다.'),
         h('ul', {}, r.items.map((s) => h('li', {}, `${s.term}${s.meaning ? ' — ' + s.meaning : ''} `,
-          s.sourcePageUrl?.startsWith('https://') ? h('a', { href: s.sourcePageUrl, target: '_blank', rel: 'noopener' }, '사전 원문 열기 ↗') : null,
+          s.sourcePageUrl?.startsWith('https://') ? h('a', { href: s.sourcePageUrl, target: '_blank', rel: 'noopener' }, s.term+' 수어 영상 · 사전 원문 ↗') : null,
           // 영상 주소가 응답에 있을 때만 재생 영역 생성 (자동재생 없음)
           s.videoUrl?.startsWith('https://') ? h('video', { src: s.videoUrl, controls: true, width: 320 }) : null))));
     }
