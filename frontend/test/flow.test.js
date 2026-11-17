@@ -66,6 +66,20 @@ test('실제 demo HTTP와 DOM 전체 흐름, 수어 없음, 답변 수정, 종�
   assert.equal(h.w.localStorage.length,0); assert.equal(h.w.sessionStorage.length,0);
 });
 
+test('마지막 질문 피드백에 null 없이 완료 버튼을 표시하고 세션을 종료한다', async t => {
+  const h=await setup(t);
+  await h.questions(); h.click('연습하기'); await h.screen('S4');
+  h.input('answer','오류를 재현하고 수정한 뒤 다시 확인했습니다.');
+  h.click('피드백 받기'); await h.wait(()=>h.d.body.textContent.includes('실제 AI 평가가 아닙니다'));
+  assert.equal(h.d.querySelector('main').textContent.includes('null'),false);
+  assert.equal([...h.d.querySelectorAll('button')].some(b=>b.textContent==='다음 질문'),false);
+  h.click('연습 완료'); await h.screen('S5');
+  assert.equal(h.w.testState().token,null);
+  assert.equal(h.w.testState().resumeText,'');
+  assert.deepEqual(Object.keys(h.w.testState().feedbacks),[]);
+  assert.ok(h.d.body.textContent.includes('면접 연습을 마쳤습니다'));
+});
+
 test('분석 대기 중 중복 호출 차단, 입력 수정으로 분석 무효화', async t => {
   let release, calls=0;
   const h=await setup(t,(url)=>{

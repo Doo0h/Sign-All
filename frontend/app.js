@@ -394,10 +394,14 @@ function S4() {
     const f = st.feedbacks[qid];
     if (!f) return;
     const list = (arr) => h('ul', {}, (arr || []).map((x) => h('li', {}, typeof x === 'string' ? x : JSON.stringify(x))));
+    const complete = h('button', { className: 'primary', onclick: () => run(complete, '연습을 마무리하고 있습니다.', endSession) }, '연습 완료');
+    const next = st.current < st.questions.length - 1
+      ? h('button', { onclick: () => { st.current++; go('S4'); } }, '다음 질문') : null;
     fbBox.append(h('h3', { tabIndex: -1 }, '피드백'), h('h4', {}, '잘한 점'), list(f.strengths),
       h('h4', {}, '보완할 점'), list(f.improvements), h('h4', {}, '제안'), h('p', {}, f.suggestion || ''),
       h('button', { onclick: () => go('S3') }, '질문 목록으로'),
-      st.current < st.questions.length - 1 ? h('button', { onclick: () => { st.current++; go('S4'); } }, '다음 질문') : null);
+      ...(next ? [next] : []), complete,
+      h('p', { className: 'note' }, '연습 완료를 누르면 이번 연습을 종료하고 입력한 내용을 지웁니다.'));
     fbBox.querySelector('h3').focus();
   };
   const fb = h('button', { className: 'primary', onclick: () => {
