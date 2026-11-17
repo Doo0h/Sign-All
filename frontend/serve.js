@@ -1,8 +1,15 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
+import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 const assets = {'/':['index.html','text/html'],'/index.html':['index.html','text/html'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css']};
+assets['/public-logos.js']=['public-logos.js','text/javascript'];
+const publicLogos=JSON.parse(readFileSync(new URL('./logos/public-map.json',import.meta.url),'utf8'));
+for(const file of Object.values(publicLogos)){
+  if(!/^public-c\d+\.(png|jpg|gif)$/.test(file))throw Error('Invalid logo filename');
+  assets['/logos/'+file]=['logos/'+file,file.endsWith('.jpg')?'image/jpeg':file.endsWith('.gif')?'image/gif':'image/png'];
+}
 for(const [name,ext] of Object.entries({kakao:'ico',naver:'ico',coupang:'ico',moloco:'png',sendbird:'svg',riotgames:'png','2k':'png'}))assets['/logos/'+name+'.'+ext]=['logos/'+name+'.'+ext,ext==='svg'?'image/svg+xml':ext==='png'?'image/png':'image/x-icon'];
 export function createFrontendServer(backend = process.env.BACKEND_URL || 'http://127.0.0.1:3001') {
   const target = new URL(backend);

@@ -1,6 +1,7 @@
 FROM node:24-alpine
 WORKDIR /app
 COPY --chown=node:node frontend/logos ./logos
+COPY --chown=node:node frontend/public-logos.js ./
 COPY --chown=node:node frontend/package.json frontend/serve.js frontend/index.html frontend/app.js frontend/style.css ./
 USER node
 ENV HOST=0.0.0.0 PORT=5173 BACKEND_URL=http://backend:3001
