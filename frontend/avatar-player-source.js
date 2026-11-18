@@ -1,0 +1,38 @@
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+export async function mountAvatar(host, data) {
+  if(!/^\/avatars\/[a-z0-9_-]+\.glb$/.test(data.assetUrl))throw Error('지원하지 않는 동작 자료 주소입니다.');
+  const response=await fetch(data.assetUrl,{signal:AbortSignal.timeout(20000)});
+  if(!response.ok)throw Error('동작 자료를 불러오지 못했습니다.');
+  const bytes=await response.arrayBuffer();if(bytes.byteLength>30*1024*1024)throw Error('동작 자료가 너무 큽니다.');
+  if(!host.isConnected)return;
+  const manager=new THREE.LoadingManager();manager.setURLModifier(url=>{if(/^data:image\//.test(url))return url;throw Error('외부 파일을 참조하는 모델은 지원하지 않습니다.');});
+  const gltf=await new GLTFLoader(manager).parseAsync(bytes,'');
+  const clips=data.clips.map(name=>THREE.AnimationClip.findByName(gltf.animations,name));
+  if(clips.some(c=>!c))throw Error('검토한 동작 클립이 파일에 없습니다.');
+  if(!host.isConnected)return;
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  const scene=new THREE.Scene();scene.add(new THREE.HemisphereLight(0xffffff,0x607060,3));
+  const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(2,4,3);scene.add(light);
+  scene.add(gltf.scene);const box=new THREE.Box3().setFromObject(gltf.scene),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+  const camera=new THREE.PerspectiveCamera(35,1,0.01,1000);
+  const span=Math.max(size.x,size.y,size.z,0.1);camera.position.set(center.x,center.y,center.z+span*2);camera.lookAt(center);
+  const canvas=renderer.domElement;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','질문의 한국수어 아바타');
+  const controls=document.createElement('div');controls.className='avatar-controls';const status=document.createElement('p');status.setAttribute('role','status');
+  const button=text=>{const b=document.createElement('button');b.type='button';b.textContent=text;controls.append(b);return b;};
+  const play=button('재생'),pause=button('일시정지'),restart=button('처음부터');
+  const label=document.createElement('label');label.textContent='재생 속도 ';const speed=document.createElement('select');speed.setAttribute('aria-label','아바타 재생 속도');
+  for(const v of [0.5,0.75,1]){const o=document.createElement('option');o.value=v;o.textContent=v+'배';o.selected=v===1;speed.append(o);}label.append(speed);controls.append(label);
+  host.replaceChildren(canvas,controls,status);
+  const mixer=new THREE.AnimationMixer(gltf.scene);let index=0,playing=false,finished=false,action;
+  const begin=()=>{action?.stop();action=mixer.clipAction(clips[index]);action.reset().setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;action.play();};begin();
+  play.onclick=()=>{if(finished){index=0;begin();finished=false;}playing=true;status.textContent='재생 중';};
+  pause.onclick=()=>{playing=false;status.textContent='일시정지';};
+  restart.onclick=()=>{index=0;begin();finished=false;playing=true;status.textContent='처음부터 재생 중';};
+  mixer.addEventListener('finished',()=>{if(index+1<clips.length){index++;begin();}else{playing=false;finished=true;status.textContent='재생 완료';}});
+  const observer=new ResizeObserver(()=>{const w=Math.max(host.clientWidth,240);renderer.setSize(w,360);camera.aspect=w/360;camera.updateProjectionMatrix();});observer.observe(host);
+  const clock=new THREE.Clock();let disposed=false;
+  const dispose=()=>{if(disposed)return;disposed=true;observer.disconnect();renderer.dispose();gltf.scene.traverse(o=>{o.geometry?.dispose();for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});};
+  function frame(){if(!host.isConnected){dispose();return;}const delta=Math.min(clock.getDelta(),0.1);if(playing&&!document.hidden)mixer.update(delta*Number(speed.value));renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  status.textContent='준비되었습니다. 재생을 눌러 주세요.';
+}

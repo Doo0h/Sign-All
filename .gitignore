@@ -37,3 +37,5 @@ backend/var/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+frontend/avatar-player.js
