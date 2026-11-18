@@ -20,6 +20,20 @@ function glossaryFor(value) {
  const input=key(value);
  return entries.find(e=>e.aliases.some(a=>key(a)===input)) || entries.find(e=>e.aliases.some(a=>input.startsWith(key(a))&&suffix.test(input.slice(key(a).length))));
 }
+// Extract words actually present in the question; do not invent synonyms with AI.
+export function questionSignKeywords(list, text, suggested=[]) {
+ const normalized=text.normalize('NFKC');
+ const escape=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+ const candidates=[...suggested,...entries.flatMap(e=>e.aliases),...list.flatMap(r=>[r.term,...r.keywords])];
+ const found=[];
+ for(const word of new Set(candidates)) {
+   const pattern=word.normalize('NFKC').split(/\s+/u).map(escape).join('\\s*');
+   const re=new RegExp('(^|[^가-힣a-zA-Z0-9])('+pattern+')(?=(?:은|는|이|가|을|를|에|에서|에게|의|와|과|로|으로|도|만|이나|나|부터|까지|하고|에서는|에는|으로는|로는)?(?:[^가-힣a-zA-Z0-9]|$))','giu');
+   const m=re.exec(normalized);if(m)found.push({word:m[2],start:m.index+m[1].length,end:m.index+m[1].length+m[2].length});
+ }
+ return found.filter(a=>!found.some(b=>b.start<=a.start&&b.end>=a.end&&b.end-b.start>a.end-a.start))
+   .sort((a,b)=>a.start-b.start).map(x=>x.word).filter((v,i,a)=>a.indexOf(v)===i).slice(0,20);
+}
 export function searchSigns(list, keyword) {
   const normalized=keyword.normalize('NFC');
   const glossary=glossaryFor(normalized);
