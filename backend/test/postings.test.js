@@ -81,3 +81,13 @@ test('selected posting grounds questions and feedback; selection is session-scop
  assert.equal(contexts.find(c=>c.kind==='feedback').input.job.description,'Review access controls');
  closed=true;assert.equal((await post('/api/interview/questions',request,token)).status,410);
 });
+
+test('failed sources retry after 30 seconds without refetching healthy sources',async()=>{
+ let clock=0,broken=true;const calls={ok:0,bad:0};
+ const service=createPostings({now:()=>clock,providers:[['ok','OK'],['bad','BAD']],fetcher:async url=>{const board=url.includes('/ok/')?'ok':'bad';calls[board]++;if(board==='bad'&&broken)throw Error('offline');return Response.json({jobs:[raw(1)]});}});
+ assert.deepEqual((await service.list(new URLSearchParams())).failedBoards,['BAD']);
+ clock=29999;await service.list(new URLSearchParams());assert.deepEqual(calls,{ok:1,bad:1});
+ clock=30000;broken=false;
+ const recovered=await service.list(new URLSearchParams());assert.deepEqual(recovered.failedBoards,[]);assert.equal(recovered.total,2);assert.deepEqual(calls,{ok:1,bad:2});
+ clock=900001;await service.list(new URLSearchParams());assert.deepEqual(calls,{ok:2,bad:3});
+});
