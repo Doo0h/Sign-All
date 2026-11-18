@@ -535,6 +535,122 @@
       "semanticStatus": "unreviewed",
       "playbackStatus": "not-tested",
       "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-5381",
+      "sourceId": "ksl-dictionary",
+      "originalId": "5381",
+      "term": "도로",
+      "keywords": [
+        "도로",
+        "길"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5381&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-11935",
+      "sourceId": "ksl-dictionary",
+      "originalId": "11935",
+      "term": "교통",
+      "keywords": [
+        "교통"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=11935&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-12468",
+      "sourceId": "ksl-dictionary",
+      "originalId": "12468",
+      "term": "감시",
+      "keywords": [
+        "감시"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=12468&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-10158",
+      "sourceId": "ksl-dictionary",
+      "originalId": "10158",
+      "term": "카메라",
+      "keywords": [
+        "카메라",
+        "사진기"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=10158&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-7597",
+      "sourceId": "ksl-dictionary",
+      "originalId": "7597",
+      "term": "촬영",
+      "keywords": [
+        "촬영"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=7597&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-5984",
+      "sourceId": "ksl-dictionary",
+      "originalId": "5984",
+      "term": "안전",
+      "keywords": [
+        "안전"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=5984&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-15801",
+      "sourceId": "ksl-dictionary",
+      "originalId": "15801",
+      "term": "통신",
+      "keywords": [
+        "통신"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=15801&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
+    },
+    {
+      "id": "ksl-15725",
+      "sourceId": "ksl-dictionary",
+      "originalId": "15725",
+      "term": "연결",
+      "keywords": [
+        "연결",
+        "접속",
+        "링크"
+      ],
+      "sourcePageUrl": "https://sldict.korean.go.kr/front/sign/signContentsView.do?origin_no=15725&top_category=CTE",
+      "checkedAt": "2026-11-18",
+      "semanticStatus": "unreviewed",
+      "playbackStatus": "not-tested",
+      "mediaUsage": "source-link-only"
     }
   ]
 }
