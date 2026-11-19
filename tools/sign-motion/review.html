@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign-All 동작 추출 검토</title>
+<style>
+body{font:16px/1.6 system-ui,sans-serif;background:#f3f7f6;color:#17332b;margin:0;padding:32px}main{max-width:1100px;margin:auto}h1{margin:0}section{background:white;border:1px solid #d3e3dc;border-radius:16px;padding:24px;margin:20px 0}label{display:block;margin:12px 0}button,input,select{font:inherit}button{padding:8px 18px;border:1px solid #749c8d;border-radius:8px;background:#fff}button:focus-visible,input:focus-visible{outline:3px solid #168463}canvas{width:100%;background:#102c27;border-radius:12px}#timeline{width:100%}.row{display:grid;grid-template-columns:1fr 1fr;gap:20px}video{width:100%;max-height:480px;background:#102c27}.note{color:#4d665d}#message{white-space:pre-wrap}@media(max-width:750px){.row{grid-template-columns:1fr}body{padding:16px}}
+</style>
+<main><h1>수어 동작 추출 검토</h1><p class="note">개발자용 로컬 검토 도구 · 파일은 서버로 전송되지 않습니다. 점·선 미리보기는 3D 아바타나 검증된 수어가 아닙니다.</p>
+<section><label>추출 결과 motion.json <input id="file" type="file" accept=".json"></label><label>원본 영상 (선택) <input id="videoFile" type="file" accept="video/*"></label><p id="message" role="status">추출 결과를 선택해 주세요.</p></section>
+<section><h2 id="question">동작 미리보기</h2><div class="row"><canvas id="canvas" width="640" height="480" aria-label="몸·손·얼굴 추정 좌표"></canvas><video id="video" controls muted playsinline aria-label="비교용 원본 영상"></video></div>
+<label>프레임 <input id="timeline" type="range" min="0" max="0" value="0" disabled></label>
+<button id="play" disabled>재생</button> <button id="pause" disabled>일시정지</button> <label>속도 <select id="speed"><option value="0.5">0.5배</option><option value="1" selected>1배</option></select></label><p id="frameInfo"></p>
+<p class="note">몸: 초록 · 손: 주황 · 얼굴: 회색. 영상 좌표를 표시하며 깊이·뼈대 회전은 재현하지 않습니다. 좌우 라벨과 손가락 가림은 원본 영상과 대조하세요. 원본 영상 컨트롤은 독립적이며 프레임 슬라이더로 시점을 맞출 수 있습니다.</p></section>
+<section><h2>검토 항목</h2><ul><li>영상 문장과 질문 의미가 일치하는가?</li><li>좌우·손 모양·방향·위치가 맞고, 손이 가려진 구간은 없는가?</li><li>표정·시선·몸 움직임과 문장 연결이 보존되는가?</li><li>실제 아바타에서도 같은 의미로 이해되는가? 좌표 검토만으로 공개 승인을 대신할 수 없습니다.</li></ul></section></main>
+<script>
+const $=id=>document.getElementById(id),canvas=$('canvas'),ctx=canvas.getContext('2d');
+const handEdges=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+const poseEdges=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]];
+let data=null,playing=false,start=0,base=0,videoUrl=null;
+function drawPoints(points,color,edges=[],radius=3){ctx.fillStyle=color;ctx.strokeStyle=color;ctx.lineWidth=2;for(const [a,b] of edges){if(!points[a]||!points[b])continue;ctx.beginPath();ctx.moveTo(points[a].x*640,points[a].y*480);ctx.lineTo(points[b].x*640,points[b].y*480);ctx.stroke();}for(const p of points){ctx.beginPath();ctx.arc(p.x*640,p.y*480,radius,0,Math.PI*2);ctx.fill();}}
+function draw(index,sync=false){if(!data)return;const f=data.frames[index];$('timeline').value=index;ctx.clearRect(0,0,640,480);drawPoints(f.face,'#71928a',[],1);drawPoints(f.pose,'#71e5b3',poseEdges);for(const h of f.hands)drawPoints(h.landmarks,'#ffbc75',handEdges);$('frameInfo').textContent=`${index+1} / ${data.frames.length} · ${(f.timestampMs/1000).toFixed(2)}초 · 몸 ${f.pose.length?'검출':'누락'} · 손 ${f.hands.length}개 · 얼굴 ${f.face.length?'검출':'누락'}`;if(sync&&$('video').readyState>=1)$('video').currentTime=f.timestampMs/1000;}
+function stop(){playing=false;$('video').pause();}
+$('file').onchange=async e=>{stop();data=null;$('play').disabled=$('pause').disabled=$('timeline').disabled=true;ctx.clearRect(0,0,640,480);$('frameInfo').textContent='';try{const file=e.target.files[0];if(!file)return;if(file.size>150*1024*1024)throw Error('파일이 너무 큽니다. 짧은 영상으로 나누세요.');const parsed=JSON.parse(await file.text());if(parsed.schemaVersion!==1||!Array.isArray(parsed.frames)||!parsed.frames.length)throw Error('지원하지 않는 추출 결과입니다.');let prev=-1;for(const f of parsed.frames){if(!Number.isFinite(f.timestampMs)||f.timestampMs<=prev||!Array.isArray(f.pose)||!Array.isArray(f.face)||!Array.isArray(f.hands))throw Error('잘못된 프레임입니다.');prev=f.timestampMs;for(const group of [f.pose,f.face,...f.hands.map(h=>h.landmarks)]){if(!Array.isArray(group)||group.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))throw Error('잘못된 좌표입니다.');}}data=parsed;$('question').textContent=data.questionText;$('message').textContent='미검토 추출 결과입니다. 원본 영상과 비교하고 아바타 보정 작업을 진행하세요.';$('video').style.transform=data.unmirrored?'scaleX(-1)':'';$('timeline').max=data.frames.length-1;$('play').disabled=$('pause').disabled=$('timeline').disabled=false;draw(0,true);}catch(error){$('message').textContent=error.message;}};
+$('videoFile').onchange=e=>{if(videoUrl)URL.revokeObjectURL(videoUrl);const file=e.target.files[0];if(file){videoUrl=URL.createObjectURL(file);$('video').src=videoUrl;}};
+$('timeline').oninput=()=>{stop();draw(Number($('timeline').value),true);};
+$('play').onclick=()=>{if(!data)return;if(Number($('timeline').value)===data.frames.length-1)draw(0,true);base=data.frames[Number($('timeline').value)].timestampMs;start=performance.now();playing=true;$('video').playbackRate=Number($('speed').value);if(videoUrl){$('video').currentTime=base/1000;$('video').play().catch(()=>{});}};
+$('pause').onclick=stop;$('speed').onchange=stop;
+function tick(now){if(playing&&data){const time=base+(now-start)*Number($('speed').value);let i=Number($('timeline').value);while(i+1<data.frames.length&&data.frames[i+1].timestampMs<=time)i++;draw(i);if(i===data.frames.length-1)stop();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script></html>
