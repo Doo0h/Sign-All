@@ -6,7 +6,7 @@ import {createAI} from './ai.js';
 import {extractDocument,documentTypes} from './documents.js';
 import {isIP} from 'node:net';
 import {createPostings} from './postings.js';
-import {searchSigns} from './sign-search.js';
+import {searchSigns,questionSignKeywords} from './sign-search.js';
 import {avatarForQuestion} from './avatar.js';
 
 export function createApp(options={}) {
@@ -156,7 +156,7 @@ export function createApp(options={}) {
           if(selected){const p=await postings.detail(b.postingId);getSession(req);s.posting=p;context=postingContext(p);company=context.company;job=context.job;}
           const output=await gate('questions',{company,job,units,analysis:s.analysis,referenceIds});
           getSession(req);
-          s.questions=output.questions.map(q=>({...q,questionId:randomUUID(),jobId:job.id,companyId:company.id,...(selected?{jobSnapshot:job,sourceSnapshot:context.source}:{})}));
+          s.questions=output.questions.map(q=>({...q,keywords:questionSignKeywords(repo.list('signs'),q.text,q.keywords),questionId:randomUUID(),jobId:job.id,companyId:company.id,...(selected?{jobSnapshot:job,sourceSnapshot:context.source}:{})}));
           result={questions:s.questions.map(({jobSnapshot,sourceSnapshot,...q})=>({...q,references:sourceSnapshot?[sourceSnapshot].filter(r=>q.referenceIds.includes(r.id)):referenceObjects(q.referenceIds)}))};
         }finally{s.questionsBusy=false;}
       } else if(req.method==='POST' && path==='/api/interview/avatar'){

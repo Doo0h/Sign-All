@@ -21,3 +21,11 @@ test('road and CCTV aliases provide related concepts without arbitrary substring
  for(const q of ['무도로망','CCTV아무문자','무보안','길이','망하다'])assert.equal(searchSigns(signs,q).items.length,0);
  assert.equal(searchSigns(signs,'도로').items[0].originalId,'5381');
 });
+
+test('question keywords come from actual sentence and retain longest expressions',async()=>{
+ const {questionSignKeywords}=await import('../src/sign-search.js');
+ const words=questionSignKeywords(signs,'도로망과 CCTV를 활용한 보안 프로젝트 경험을 설명해 주세요.',['없는단어','보안 프로젝트']);
+ assert.ok(words.includes('도로망'));assert.ok(words.includes('CCTV'));assert.ok(words.includes('보안 프로젝트'));assert.ok(words.includes('경험'));assert.ok(!words.includes('없는단어'));assert.ok(!words.includes('도로'));
+ for(const word of words)assert.ok(searchSigns(signs,word).items.length>0,word);
+ assert.deepEqual(questionSignKeywords(signs,'무보안과 길이를 설명하세요.',[]),[]);
+});

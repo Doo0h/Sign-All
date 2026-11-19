@@ -37,10 +37,12 @@ export function createPostings({fetcher=fetch,now=Date.now,providers=boards}={})
  const domestic=domesticPostings(requestUrl,now,plainText,title=>categories.find(([,re])=>re.test(title))?.[0]||'기타');
  const publicJobs=publicPostings(requestUrl,now,plainText,title=>categories.find(([,re])=>re.test(title))?.[0]||'기타');
  async function snapshot(){
-   if(cache&&now()-cache.time<ttl)return cache;
+   if(cache&&now()-cache.time<ttl&&(!cache.failedBoards.length||now()-cache.attemptAt<30000))return cache;
    if(pending)return pending;
+   const retryOnly=cache&&now()-cache.time<ttl;
    pending=(async()=>{
      const results=await Promise.allSettled(providers.map(async([board,name])=>{
+       if(retryOnly&&!cache.failedBoards.includes(name))return cache.items.filter(p=>p.board===board);
        if(board==='alio')return publicJobs.list();
        if(['kakao','naver'].includes(board))return domestic.list(board);
        const r=await request(board+'/jobs');if(!Array.isArray(r.jobs))throw new Error('INVALID_LIST');
@@ -48,7 +50,7 @@ export function createPostings({fetcher=fetch,now=Date.now,providers=boards}={})
      }));
      const failedBoards=results.flatMap((r,i)=>r.status==='rejected'?[providers[i][1]]:[]);
      if(failedBoards.length===providers.length)fail(503,'POSTINGS_UNAVAILABLE','채용 공고를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',undefined,true);
-     cache={time:now(),items:results.flatMap(r=>r.status==='fulfilled'?r.value:[]),failedBoards};return cache;
+     cache={time:retryOnly?cache.time:now(),attemptAt:now(),items:results.flatMap(r=>r.status==='fulfilled'?r.value:[]),failedBoards};return cache;
    })().finally(()=>{pending=null;});return pending;
  }
  return {

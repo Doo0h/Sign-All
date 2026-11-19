@@ -1,0 +1,21 @@
+{
+  "id": "question-001",
+  "questionText": "자기소개를 해 주세요.",
+  "language": "ksl",
+  "video": "intro.mp4",
+  "source": "",
+  "signerId": "",
+  "mirrored": false,
+  "rights": {
+    "motionExtraction": false,
+    "training": false,
+    "derivativeDistribution": false,
+    "evidenceFile": ""
+  },
+  "review": {
+    "status": "draft",
+    "reviewer": "",
+    "reviewedAt": "",
+    "notes": "영상의 문장 의미, 좌우, 손 모양, 손 방향, 얼굴 표정 및 동작 연결을 확인해야 합니다."
+  }
+}

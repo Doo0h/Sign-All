@@ -1,0 +1,16 @@
+{
+  "questionText": "자기소개를 해 주세요.",
+  "status": "draft",
+  "reviewedBy": "",
+  "reviewedAt": "",
+  "version": "1",
+  "assetSha256": "",
+  "clips": ["question-001"],
+  "checks": {
+    "meaning": false,
+    "hands": false,
+    "faceAndBody": false,
+    "transitions": false,
+    "avatarPlayback": false
+  }
+}
