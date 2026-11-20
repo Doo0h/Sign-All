@@ -85,8 +85,11 @@ def build_scene(data):
             frame = 1 + sample['timestampMs'] * data['fps'] / 1000
             points = panel_points(sample, panel)
             for obj in joints + links:
-                obj.hide_viewport = obj.hide_render = not bool(points)
-                obj.keyframe_insert('hide_viewport', frame=frame)
+                # Disabling an object in the viewport also stops dependency-graph
+                # evaluation in Blender. Animate zero scale instead so it can reappear.
+                obj.hide_render = not bool(points)
+                obj.scale = (1, 1, 1) if points else (0, 0, 0)
+                obj.keyframe_insert('scale', frame=frame)
                 obj.keyframe_insert('hide_render', frame=frame)
             if not points:
                 continue
@@ -119,9 +122,11 @@ def build_scene(data):
             for curve in obj.animation_data.action.fcurves:
                 for keyframe in curve.keyframe_points:
                     keyframe.interpolation = 'CONSTANT'
-    scene.frame_set(1)
     if bpy.context.window:
         bpy.context.window.scene = scene
+    scene.frame_set(1)
+    with bpy.context.temp_override(scene=scene, view_layer=scene.view_layers[0]):
+        bpy.context.view_layer.update()
     return scene
 
 def main():

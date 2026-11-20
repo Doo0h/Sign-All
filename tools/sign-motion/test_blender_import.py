@@ -12,7 +12,9 @@ def fixture():
             'frames': [{'timestampMs': 0, 'poseWorld': [point.copy() for _ in range(33)],
                         'hands': [{'label': 'Left', 'score': .9, 'world': [point.copy() for _ in range(21)]}],
                         'blendshapes': {'jawOpen': .5}},
-                       {'timestampMs': 100, 'poseWorld': [], 'hands': [], 'blendshapes': {}}]}
+                       {'timestampMs': 100, 'poseWorld': [], 'hands': [], 'blendshapes': {}},
+                       {'timestampMs': 200, 'poseWorld': [point.copy() for _ in range(33)],
+                        'hands': [], 'blendshapes': {'jawOpen': .5}}]}
 
 
 class ImportTests(unittest.TestCase):
@@ -29,7 +31,7 @@ class ImportTests(unittest.TestCase):
             path = Path(directory) / 'motion.json'
             data = fixture()
             path.write_text(json.dumps(data), encoding='utf8')
-            self.assertEqual(len(load_motion(path)['frames']), 2)
+            self.assertEqual(len(load_motion(path)['frames']), 3)
             data['frames'][1]['timestampMs'] = 0
             path.write_text(json.dumps(data), encoding='utf8')
             with self.assertRaises(ValueError):
@@ -46,14 +48,20 @@ class ImportTests(unittest.TestCase):
         original = set(bpy.data.scenes.keys())
         scene = build_scene(fixture())
         self.assertTrue(original.issubset(set(bpy.data.scenes.keys())))
-        self.assertEqual(scene.frame_end, 2)
+        self.assertEqual(scene.frame_end, 3)
         body = scene.objects['body_00']
         scene.frame_set(1)
-        self.assertFalse(body.hide_viewport)
+        bpy.context.view_layer.update()
+        self.assertEqual(tuple(body.scale), (1, 1, 1))
         scene.frame_set(2)
-        self.assertTrue(body.hide_viewport)
-        self.assertTrue(scene.objects['Left_00'].hide_viewport)
+        bpy.context.view_layer.update()
+        self.assertEqual(tuple(body.scale), (0, 0, 0))
+        self.assertEqual(tuple(scene.objects['Left_00'].scale), (0, 0, 0))
         self.assertFalse(scene.objects['Face_coefficients_NOT_APPLIED_TO_AVATAR']['detected'])
+        scene.frame_set(3)
+        bpy.context.view_layer.update()
+        self.assertEqual(tuple(body.scale), (1, 1, 1))
+        self.assertTrue(scene.objects['Face_coefficients_NOT_APPLIED_TO_AVATAR']['detected'])
         self.assertTrue(all(p.interpolation == 'CONSTANT' for curve in body.animation_data.action.fcurves for p in curve.keyframe_points))
         if os.environ.get('SIGN_MOTION_BLENDER_OUTPUT'):
             bpy.ops.wm.save_as_mainfile(filepath=os.environ['SIGN_MOTION_BLENDER_OUTPUT'])

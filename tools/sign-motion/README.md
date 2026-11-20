@@ -68,7 +68,7 @@ Blender 실행 파일 경로는 실제 설치 위치로 바꾸세요. Blender Py
 
 ```powershell
 python -m venv D:/SignAll/blender-tools/.venv
-D:/SignAll/blender-tools/.venv/Scripts/python.exe -m pip install bpy==4.3.0
+D:/SignAll/blender-tools/.venv/Scripts/python.exe -m pip install -r tools/sign-motion/requirements-blender.txt
 D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/blender_import.py --motion data/private/sign-motion/question-001/take-01/motion.json --output data/private/sign-motion/question-001/take-01/review.blend
 ```
 
