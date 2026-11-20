@@ -8,6 +8,16 @@ export async function mountAvatar(host, data) {
   if(!host.isConnected)return;
   const manager=new THREE.LoadingManager();manager.setURLModifier(url=>{if(/^data:image\//.test(url))return url;throw Error('외부 파일을 참조하는 모델은 지원하지 않습니다.');});
   const gltf=await new GLTFLoader(manager).parseAsync(bytes,'');
+  if(data.character?.renderStyle==='animation'){
+    const ramp=new THREE.DataTexture(Uint8Array.from({length:64},(_,i)=>155+Math.round(i*100/63)),64,1,THREE.RedFormat);
+    ramp.minFilter=THREE.LinearFilter;ramp.magFilter=THREE.LinearFilter;ramp.needsUpdate=true;
+    const converted=new Map();
+    gltf.scene.traverse(object=>{if(!object.isMesh)return;const convert=original=>{
+      if(!converted.has(original)){converted.set(original,new THREE.MeshToonMaterial({color:original.color,map:original.map,gradientMap:ramp,side:original.side,transparent:original.transparent,opacity:original.opacity}));}
+      return converted.get(original);
+    };object.material=Array.isArray(object.material)?object.material.map(convert):convert(object.material);});
+    for(const original of converted.keys())original.dispose();
+  }
   const clips=data.clips.map(name=>THREE.AnimationClip.findByName(gltf.animations,name));
   if(clips.some(c=>!c))throw Error('검토한 동작 클립이 파일에 없습니다.');
   if(!host.isConnected)return;
