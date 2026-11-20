@@ -55,6 +55,39 @@ tools/sign-motion/.venv/Scripts/python.exe tools/sign-motion/pipeline.py extract
 
 ## 5. 아바타 제작 단계 — 별도 작업 필요
 
+### Blender 좌표 가져오기
+
+`blender_import.py`는 추출한 좌표를 **별도 Blender 장면**으로 가져와 키프레임으로 만듭니다.
+기존 장면을 삭제하지 않으며 기존 출력 파일을 덮어쓰지 않습니다. Blender 4.3 API를 대상으로 합니다.
+
+```powershell
+& 'C:/Program Files/Blender Foundation/Blender 4.3/blender.exe' --background --python tools/sign-motion/blender_import.py -- --motion data/private/sign-motion/question-001/take-01/motion.json --output data/private/sign-motion/question-001/take-01/review.blend
+```
+
+Blender 실행 파일 경로는 실제 설치 위치로 바꾸세요. Blender Python 모듈을 사용하는 별도 환경에서도 실행할 수 있습니다.
+
+```powershell
+python -m venv D:/SignAll/blender-tools/.venv
+D:/SignAll/blender-tools/.venv/Scripts/python.exe -m pip install bpy==4.3.0
+D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/blender_import.py --motion data/private/sign-motion/question-001/take-01/motion.json --output data/private/sign-motion/question-001/take-01/review.blend
+```
+
+- 몸과 왼손·오른손을 **서로 독립된 패널**로 배치합니다. 손은 검토를 위해 4배 확대합니다. 이것은 몸에 손을 붙인 아바타가 아닙니다.
+- 점과 연결선으로 관절을 표시합니다. 누락 프레임이나 좌우 분류가 중복된 손은 숨깁니다. 좌우 신뢰도 0.5 미만도 표시하지 않습니다.
+- 입력 시간에 맞춰 키프레임을 만들고 보간을 하지 않습니다. 추정하지 못한 중간 동작을 임의로 만들지 않습니다.
+- `Face_coefficients_NOT_APPLIED_TO_AVATAR` 오브젝트의 사용자 속성에 표정 계수와 검출 여부를 기록합니다. 캐릭터 표정에는 아직 적용하지 않습니다.
+- 최대 4,000프레임·150 MiB 파일을 받습니다. 큰 영상은 먼저 짧게 나누세요.
+- 생성된 `.blend`는 보정 작업의 시작점이며 웹사이트 등록 파일이나 검증된 한국수어가 아닙니다.
+
+실제 Blender 호출 테스트는 별도 모듈 설치 후 실행합니다.
+
+```powershell
+$env:SIGN_MOTION_BLENDER_TEST = '1'
+D:/SignAll/blender-tools/.venv/Scripts/python.exe -m unittest discover -s tools/sign-motion -p test_blender_import.py
+```
+
+### 사람형 캐릭터에 적용 (미구현)
+
 사용 허락된 손가락 골격·얼굴 표정이 있는 캐릭터가 필요합니다. Blender 등에서 다음을 수행합니다.
 
 1. 몸 좌표 기준으로 어깨·팔·손목의 회전을 계산하고 캐릭터 뼈대에 맞춥니다.
