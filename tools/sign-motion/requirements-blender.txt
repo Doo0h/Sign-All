@@ -1,0 +1,3 @@
+# Separate Python 3.11 environment; Blender 4.3 is built against NumPy 1.x.
+numpy==1.26.4
+bpy==4.3.0
