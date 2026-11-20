@@ -73,6 +73,20 @@ http://127.0.0.1:8091/ 에서 확인합니다. 이 서버는 루프백으로만 
 
 1. 동일 조건으로 허용된 자료를 더 확보하고 단어·문장·수어자·출처를 구분해 데이터셋 구성.
 2. 원본과 캐릭터를 비교하여 팔의 비틀림, 손가락 방향, 접촉을 교정.
-3. 얼굴 표정·시선·몸통 대응과 의상·헤어를 추가.
+3. 얼굴 표정·시선·몸통 대응과 의상 변형을 보정.
 4. 한국수어 사용자/전문가가 최종 동작과 의미를 검토한 뒤 등록.
 5. 문장 단위 자료와 검수 결과가 쌓인 뒤 생성 모델의 학습·검증 분할 및 평가 설계.
+
+## 여성 진행자 스타일과 상반신 화면
+
+사용자가 제공한 참고 이미지의 검은 단발, 검은 재킷, 흰 셔츠 구성을 참고해 별도의 3D 메시를 만들었습니다. 이미지 속 원본 캐릭터를 추출하거나 동일하게 복제한 모델은 아닙니다.
+
+기본 모델: [Innerscene / MakeHuman 여성 모델 · CC0](https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5). `style_presenter.py`가 의상·머리·눈·눈썹을 만들고 기존 163개 뼈대에 연결합니다. `retarget_makehuman.py`가 기존 동작의 팔·손 회전을 적용하고 `design.json`의 출처를 결과 보고서에 보존합니다. 얼굴 표정은 아직 고정입니다.
+
+```powershell
+D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/style_presenter.py --model data/private/sign-motion/sources/base-female.glb --output data/private/sign-motion/presenter-style-new
+D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/retarget_makehuman.py --motion data/private/sign-motion/operation-take-01/motion.json --model data/private/sign-motion/presenter-style-new/presenter-female.glb --output data/private/sign-motion/presenter-avatar-new --start 11 --end 55
+python tools/sign-motion/avatar_review.py --folder data/private/sign-motion/presenter-avatar-new --video data/private/sign-motion/sources/operation-preview.webm
+```
+
+현재 로컬 미리보기 출력은 `presenter-avatar-05`입니다. 플레이어는 검은 배경에서 상반신을 크게 표시하며 `framing: "full"`이면 전신 화면으로 돌아갑니다. 다른 동작 자료를 추가할 때는 팔을 머리 위나 옆으로 뻗는 구간의 잘림도 검토해야 합니다. 생성 파일은 `data/private`에 보관하며 Git과 검토 완료 목록에 자동 등록하지 않습니다.

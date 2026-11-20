@@ -160,6 +160,9 @@ def retarget(data, model, output, start, end, render=False):
         'limitations':['Cropped single word, not a question translation','No new ML model trained',
         'Estimated arm/hand rotations; finger roll, contact and collisions need manual correction',
         'Face, gaze and torso remain at rest','Not linguistically reviewed; never auto-register as ready']}
+    design = Path(model).with_name('design.json')
+    if design.is_file():
+        report['character'] = json.loads(design.read_text(encoding='utf8'))
     (output/'retarget-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8')
     return report
 
