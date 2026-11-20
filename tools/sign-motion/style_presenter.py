@@ -26,9 +26,9 @@ def style(model, output):
         bsdf.inputs['Roughness'].default_value=roughness
         bsdf.inputs['Specular IOR Level'].default_value=.22
         return m
-    skin=material('Warm skin',(.52,.29,.19));black=material('Black tailored jacket',(.006,.008,.011))
+    skin=material('Warm skin',(.66,.40,.28),.85);black=material('Black tailored jacket',(.012,.017,.026),.85)
     lapel=material('Lapel satin',(.026,.032,.04),.47);white=material('Ivory shirt',(.88,.90,.88))
-    hairmat=material('Soft black bob',(.008,.006,.005),.42);lip=material('Natural lip',(.35,.10,.09))
+    hairmat=material('Soft black bob',(.014,.010,.009),.72);lip=material('Natural lip',(.43,.17,.15),.8)
     eyewhite=material('Eye white',(.8,.82,.78),.35);iris=material('Brown iris',(.085,.038,.019),.3)
     pupil=material('Pupil and brow',(.008,.006,.005),.35)
     body.data.materials.clear();body.data.materials.append(skin);body.data.materials.append(lip);body.data.materials.append(black)
@@ -60,7 +60,7 @@ def style(model, output):
             _,i,_=kd.find(v.co)
             for g in body.data.vertices[i].groups:obj.vertex_groups[g.group].add([v.index],g.weight,'REPLACE')
         mod=obj.modifiers.new('Weighted outfit','ARMATURE');mod.object=rig
-    rings=[(.80,.14,.09),(.90,.135,.085),(1.00,.115,.085),(1.10,.135,.105),(1.20,.16,.115),(1.27,.17,.09),(1.31,.13,.065),(1.335,.05,.045)]
+    rings=[(.70,.15,.10),(.80,.145,.095),(.90,.135,.085),(1.00,.12,.09),(1.10,.135,.105),(1.20,.16,.115),(1.27,.17,.09),(1.31,.13,.065),(1.335,.05,.045)]
     verts=[];faces=[];n=64
     for z,rx,ry in rings:
         for j in range(n):
@@ -105,7 +105,7 @@ def style(model, output):
     import bmesh
     keep_hand={v.index for v in body.data.vertices if sum(g.weight for g in v.groups if body.vertex_groups[g.group].name.startswith(('wrist','finger','metacarpal')))> .12}
     bm=bmesh.new();bm.from_mesh(body.data);bm.faces.ensure_lookup_table()
-    remove=[f for f in bm.faces if (.85<f.calc_center_median().z<1.325 or (1.325<=f.calc_center_median().z<1.35 and abs(f.calc_center_median().x)>.047)) and not any(v.index in keep_hand for v in f.verts)]
+    remove=[f for f in bm.faces if (.72<f.calc_center_median().z<1.325 or (1.325<=f.calc_center_median().z<1.35 and abs(f.calc_center_median().x)>.047)) and not any(v.index in keep_hand for v in f.verts)]
     bmesh.ops.delete(bm,geom=remove,context='FACES_ONLY');bm.to_mesh(body.data);bm.free();body.data.update()
     for side in (-1,1):
         mesh('Jacket lapel '+str(side),[(side*.050,-.08,1.321),(side*.105,-.116,1.26),(side*.018,-.139,1.10),(side*.054,-.14,1.22)],[(0,1,2,3)],lapel,'spine01')
@@ -131,10 +131,11 @@ def style(model, output):
     solid=hair.modifiers.new('Hair thickness','SOLIDIFY');solid.thickness=.004
     # Eye detail on the actual rig eye locations, and thin curved eyebrows.
     for side in (-1,1):
-        for name,mat,scale,dy in [('Iris',iris,(.0055,.0018,.0062),-.132),('Pupil',pupil,(.0028,.001,.0035),-.134)]:
+        for name,mat,scale,dy in [('Iris',iris,(.008,.002,.008),-.132),('Pupil',pupil,(.004,.0015,.005),-.134),('Eye glint',white,(.0015,.001,.0015),-.136)]:
             with bpy.context.temp_override(scene=scene,view_layer=scene.view_layers[0]):
                 bpy.ops.mesh.primitive_uv_sphere_add(segments=20,ring_count=12,location=(side*.02845,dy,1.4902))
                 obj=bpy.context.object;obj.name=name+str(side);obj.scale=scale
+                if name=='Eye glint':obj.location.x-=.002;obj.location.z+=.003
                 bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
             obj.data.materials.append(mat);attach(obj,'head')
             for p in obj.data.polygons:p.use_smooth=True
@@ -150,12 +151,29 @@ def style(model, output):
         brow=bpy.data.objects.new('Eyebrow mesh '+str(side),brow_mesh);scene.collection.objects.link(brow)
         bpy.data.objects.remove(obj,do_unlink=True)
         attach(brow,'head')
-    scene['design']='Original procedural business outfit and bob hairstyle inspired by user reference; CC0 base.'
+    # A gently oversized, softer head creates an animation-style adult presenter.
+    # Only head-region vertices change; signing hands and arm bone lengths stay intact.
+    for obj in list(scene.objects):
+        if obj.type!='MESH':continue
+        for vertex in obj.data.vertices:
+            co=vertex.co
+            if co.z<=1.36:continue
+            blend=min(1,max(0,(co.z-1.36)/.065));blend=blend*blend*(3-2*blend)
+            if obj==body:
+                # Reduce the strongly projecting nose and relax the open lower lip.
+                nose=math.exp(-((co.x/.018)**2+((co.z-1.455)/.025)**2))
+                if co.y<-.11:co.y+=.010*nose
+                mouth=math.exp(-((co.x/.029)**4+((co.z-1.422)/.014)**4))
+                if co.y<-.09:co.z+=(1.424-co.z)*.45*mouth
+            co.x*=1+.13*blend
+            co.z+=.08*(co.z-1.40)*blend
+        obj.data.update()
+    scene['design']='Original animation-style adult presenter; softly enlarged head, natural signing hands; CC0 base.'
     output.mkdir(parents=True)
     bpy.context.window.scene=scene;bpy.context.view_layer.update()
     bpy.ops.export_scene.gltf(filepath=str(output/'presenter-female.glb'),export_format='GLB',use_active_scene=True,export_animations=False,export_apply=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output/'presenter-female.blend'))
-    (output/'design.json').write_text(json.dumps({'base':'CC0 Innerscene/MakeHuman female','source':'https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5','changes':['Procedural weighted black jacket and trousers','White shirt and collar','Black bob hair','Skin, lips, eyes and eyebrows'],'skeletonBones':len(rig.data.bones)},indent=2),encoding='utf8')
+    (output/'design.json').write_text(json.dumps({'renderStyle':'animation','base':'CC0 Innerscene/MakeHuman female','source':'https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5','changes':['Procedural weighted black jacket and trousers','White shirt and collar','Black bob hair','Animation-style head proportions, softer face, larger irises and eye highlights','Original signing hand proportions preserved'],'skeletonBones':len(rig.data.bones)},indent=2),encoding='utf8')
 
 
 if __name__=='__main__':

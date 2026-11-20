@@ -89,4 +89,10 @@ D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/retarget_mak
 python tools/sign-motion/avatar_review.py --folder data/private/sign-motion/presenter-avatar-new --video data/private/sign-motion/sources/operation-preview.webm
 ```
 
-현재 로컬 미리보기 출력은 `presenter-avatar-05`입니다. 플레이어는 검은 배경에서 상반신을 크게 표시하며 `framing: "full"`이면 전신 화면으로 돌아갑니다. 다른 동작 자료를 추가할 때는 팔을 머리 위나 옆으로 뻗는 구간의 잘림도 검토해야 합니다. 생성 파일은 `data/private`에 보관하며 Git과 검토 완료 목록에 자동 등록하지 않습니다.
+현재 로컬 미리보기 출력은 `presenter-avatar-06`입니다. 플레이어는 검은 배경에서 상반신을 크게 표시하며 `framing: "full"`이면 전신 화면으로 돌아갑니다. 다른 동작 자료를 추가할 때는 팔을 머리 위나 옆으로 뻗는 구간의 잘림도 검토해야 합니다. 생성 파일은 `data/private`에 보관하며 Git과 검토 완료 목록에 자동 등록하지 않습니다.
+
+### 애니메이션풍 외형
+
+머리 영역만 가로 13%, 세로 최대 8% 확대하고 코와 입의 돌출을 완화했습니다. 눈동자와 반사광을 추가했으며 손·팔의 비율과 뼈대는 바꾸지 않았습니다. 재킷 밑단을 연장해 몸 메시가 노출되던 부분도 정리했습니다. `design.json`의 `renderStyle: "animation"`을 결과 보고서에 전달하면 플레이어가 부드러운 툰 음영을 적용합니다. 이 설정이 없는 모델은 기존 재질로 렌더링됩니다.
+
+이번 변경은 외형과 표시 방식 개선입니다. 새 문장 동작, 수어 문법에 필요한 표정, 언어적 검수까지 완료한 결과는 아닙니다. 다음 단계는 이용 가능한 짧은 문장 원본을 확보하고 손목·손가락·접촉을 교정한 뒤 한국수어 사용자에게 검토받는 것입니다.
