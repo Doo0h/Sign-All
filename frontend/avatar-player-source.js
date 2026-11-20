@@ -12,11 +12,15 @@ export async function mountAvatar(host, data) {
   if(clips.some(c=>!c))throw Error('검토한 동작 클립이 파일에 없습니다.');
   if(!host.isConnected)return;
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  const scene=new THREE.Scene();scene.add(new THREE.HemisphereLight(0xffffff,0x607060,3));
+  const scene=new THREE.Scene();scene.background=new THREE.Color('#080a0e');scene.add(new THREE.HemisphereLight(0xffffff,0x607080,2));
   const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(2,4,3);scene.add(light);
   scene.add(gltf.scene);const box=new THREE.Box3().setFromObject(gltf.scene),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
   const camera=new THREE.PerspectiveCamera(35,1,0.01,1000);
-  const span=Math.max(size.x,size.y,size.z,0.1);camera.position.set(center.x,center.y,center.z+span*2);camera.lookAt(center);
+  const full=data.framing==='full';
+  const target=center.clone();if(!full)target.y=box.min.y+size.y*.78;
+  const frameHeight=Math.max(size.y*(full?1.08:.54),.1),frameWidth=Math.max(size.x*(full?1.12:.78),.1);
+  const fitCamera=()=>{const tangent=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));const distance=Math.max(frameHeight/(2*tangent),frameWidth/(2*tangent*camera.aspect));camera.position.set(target.x,target.y,target.z+distance+.05);camera.lookAt(target);};
+  fitCamera();
   const canvas=renderer.domElement;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','질문의 한국수어 아바타');
   const controls=document.createElement('div');controls.className='avatar-controls';const status=document.createElement('p');status.setAttribute('role','status');
   const button=text=>{const b=document.createElement('button');b.type='button';b.textContent=text;controls.append(b);return b;};
@@ -30,7 +34,7 @@ export async function mountAvatar(host, data) {
   pause.onclick=()=>{playing=false;status.textContent='일시정지';};
   restart.onclick=()=>{index=0;begin();finished=false;playing=true;status.textContent='처음부터 재생 중';};
   mixer.addEventListener('finished',()=>{if(index+1<clips.length){index++;begin();}else{playing=false;finished=true;status.textContent='재생 완료';}});
-  const observer=new ResizeObserver(()=>{const w=Math.max(host.clientWidth,240);renderer.setSize(w,360);camera.aspect=w/360;camera.updateProjectionMatrix();});observer.observe(host);
+  const observer=new ResizeObserver(()=>{const w=Math.max(host.clientWidth,240),height=Math.min(520,Math.max(400,Math.round(w*.9)));renderer.setSize(w,height);camera.aspect=w/height;camera.updateProjectionMatrix();fitCamera();});observer.observe(host);
   const clock=new THREE.Clock();let disposed=false;
   const dispose=()=>{if(disposed)return;disposed=true;observer.disconnect();renderer.dispose();gltf.scene.traverse(o=>{o.geometry?.dispose();for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});};
   function frame(){if(!host.isConnected){dispose();return;}const delta=Math.min(clock.getDelta(),0.1);if(playing&&!document.hidden)mixer.update(delta*Number(speed.value));renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
