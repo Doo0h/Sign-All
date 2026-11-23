@@ -6,10 +6,12 @@ from pathlib import Path
 import sys
 
 
-def style(model, output):
+def style(model, output, profile='business'):
     import bpy
     from mathutils import Vector
     output = Path(output)
+    if profile not in ('business','blue-shirt'):raise ValueError('Unknown character profile')
+    blue = profile=='blue-shirt'
     if output.exists():
         raise ValueError('Choose a new output folder')
     scene=bpy.data.scenes.new('SignAll_business_presenter')
@@ -31,6 +33,11 @@ def style(model, output):
     hairmat=material('Soft black bob',(.014,.010,.009),.72);lip=material('Natural lip',(.43,.17,.15),.8)
     eyewhite=material('Eye white',(.8,.82,.78),.35);iris=material('Brown iris',(.085,.038,.019),.3)
     pupil=material('Pupil and brow',(.008,.006,.005),.35)
+    if blue:
+        black=material('Sky blue cotton shirt',(.33,.43,.64),.8)
+        hairmat=material('Dark brown parted hair',(.035,.022,.016),.65)
+        collar_mat=material('Blue folded collar',(.28,.37,.57),.8)
+    else:collar_mat=white
     body.data.materials.clear();body.data.materials.append(skin);body.data.materials.append(lip);body.data.materials.append(black)
     for p in body.data.polygons:
         p.use_smooth=True
@@ -75,8 +82,23 @@ def style(model, output):
             a=2*math.pi*j/48
             collar_vertices.append((.054*math.sin(a),-.018-.055*math.cos(a),z))
     for j in range(48):collar_faces.append((j,(j+1)%48,(j+1)%48+48,j+48))
-    mesh('Shirt collar band',collar_vertices,collar_faces,white,'spine01')
-    mesh('White shirt front',[(0,-.128,1.075),(-.070,-.133,1.27),(-.035,-.075,1.335),(.035,-.075,1.335),(.070,-.133,1.27)],[(0,1,2,3,4)],white,'spine01')
+    mesh('Shirt collar band',collar_vertices,collar_faces,collar_mat,'spine01')
+    if not blue:
+        mesh('White shirt front',[(0,-.128,1.075),(-.070,-.133,1.27),(-.035,-.075,1.335),(.035,-.075,1.335),(.070,-.133,1.27)],[(0,1,2,3,4)],white,'spine01')
+    else:
+        placket=[]
+        for z,rx,ry in rings[:-1]:
+            placket.extend([(-.008,-.018-ry,z),(.008,-.018-ry,z)])
+        seam=mesh('Shirt button placket',placket,[(i*2,i*2+1,i*2+3,i*2+2) for i in range(len(rings)-2)],collar_mat)
+        garment_weights(seam)
+        for z in (.85,.97,1.09,1.21):
+            lo,hi=next((a,b) for a,b in zip(rings,rings[1:]) if a[0]<=z<=b[0])
+            ry=lo[2]+(hi[2]-lo[2])*(z-lo[0])/(hi[0]-lo[0])
+            with bpy.context.temp_override(scene=scene,view_layer=scene.view_layers[0]):
+                bpy.ops.mesh.primitive_uv_sphere_add(segments=16,ring_count=8,location=(0,-.023-ry,z))
+                button=bpy.context.object;button.name='Pearl shirt button';button.scale=(.005,.002,.005)
+                bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
+            button.data.materials.append(white);garment_weights(button)
     for side in ('L','R'):
         b=rig.data.bones
         shoulder=b['upperarm01.'+side].head_local;elbow=b['lowerarm01.'+side].head_local;wrist=b['wrist.'+side].head_local
@@ -108,8 +130,8 @@ def style(model, output):
     remove=[f for f in bm.faces if (.72<f.calc_center_median().z<1.325 or (1.325<=f.calc_center_median().z<1.35 and abs(f.calc_center_median().x)>.047)) and not any(v.index in keep_hand for v in f.verts)]
     bmesh.ops.delete(bm,geom=remove,context='FACES_ONLY');bm.to_mesh(body.data);bm.free();body.data.update()
     for side in (-1,1):
-        mesh('Jacket lapel '+str(side),[(side*.050,-.08,1.321),(side*.105,-.116,1.26),(side*.018,-.139,1.10),(side*.054,-.14,1.22)],[(0,1,2,3)],lapel,'spine01')
-        mesh('White collar '+str(side),[(side*.012,-.063,1.342),(side*.052,-.082,1.322),(side*.043,-.116,1.278),(side*.008,-.091,1.31)],[(0,1,2,3)],white,'spine01')
+        if not blue:mesh('Jacket lapel '+str(side),[(side*.050,-.08,1.321),(side*.105,-.116,1.26),(side*.018,-.139,1.10),(side*.054,-.14,1.22)],[(0,1,2,3)],lapel,'spine01')
+        mesh('Folded collar '+str(side),[(side*.012,-.063,1.342),(side*.057,-.082,1.322),(side*.060,-.116,1.272),(side*.014,-.091,1.31)],[(0,1,2,3)],collar_mat,'spine01')
     # Swept, ear-length bob: cap and sides are one smooth shell, weighted to head.
     vertices=[];faces=[];segments=96;rows=24
     for row in range(rows+1):
@@ -117,11 +139,12 @@ def style(model, output):
         for col in range(segments):
             angle=2*math.pi*col/segments
             a=(angle+math.pi)%(2*math.pi)-math.pi
-            fringe=1.525+.035*math.sin(a)
+            fringe=1.525+.035*math.sin(a) if not blue else 1.51+.065*math.exp(-(a/.4)**2)
             blend=min(1,max(0,(abs(a)-.72)/.48));blend=blend*blend*(3-2*blend)
-            bottom=fringe*(1-blend)+1.365*blend
-            z=1.615+(bottom-1.615)*t
-            radius=math.sqrt(max(0,1-((z-1.49)/.126)**2)) if z>=1.49 else 1-.12*(1.49-z)/.125
+            bottom=fringe*(1-blend)+(1.435 if blue else 1.365)*blend
+            top=1.64 if blue else 1.615
+            z=top+(bottom-top)*t
+            radius=math.sqrt(max(0,1-((z-1.49)/(.151 if blue else .126))**2)) if z>=1.49 else 1-.12*(1.49-z)/.125
             vertices.append((.097*radius*math.sin(angle),-.005-.145*radius*math.cos(angle),z))
     for row in range(rows):
         for col in range(segments):
@@ -129,6 +152,24 @@ def style(model, output):
             faces.append((a,b,b+segments,a+segments))
     hair=mesh('Side-part black bob',vertices,faces,hairmat,'head')
     solid=hair.modifiers.new('Hair thickness','SOLIDIFY');solid.thickness=.004
+    if blue:
+        # Tapered overlapping locks give the center-part silhouette visible volume.
+        for side in (-1,1):
+            for layer in range(6):
+                verts=[];faces=[];steps=22;radial=10
+                def path(t):
+                    return Vector((side*(.006+.089*math.sin(t*math.pi/2)),
+                        -.025-layer*.009-.095*math.sin(t*math.pi/2),
+                        1.633-layer*.007-.13*t*t))
+                for i in range(steps+1):
+                    t=i/steps;c=path(t);direction=(path(min(1,t+.01))-path(max(0,t-.01))).normalized()
+                    x=direction.cross(Vector((0,1,0))).normalized();y=direction.cross(x).normalized()
+                    radius=.014*(.35+.65*math.sin(math.pi*t))*(1-.75*t)
+                    for j in range(radial):
+                        a=2*math.pi*j/radial;verts.append(tuple(c+radius*(math.cos(a)*x+.7*math.sin(a)*y)))
+                for i in range(steps):
+                    for j in range(radial):faces.append((i*radial+j,i*radial+(j+1)%radial,(i+1)*radial+(j+1)%radial,(i+1)*radial+j))
+                mesh('Swept brown lock',verts,faces,hairmat,'head')
     # Eye detail on the actual rig eye locations, and thin curved eyebrows.
     for side in (-1,1):
         for name,mat,scale,dy in [('Iris',iris,(.008,.002,.008),-.132),('Pupil',pupil,(.004,.0015,.005),-.134),('Eye glint',white,(.0015,.001,.0015),-.136)]:
@@ -165,18 +206,24 @@ def style(model, output):
                 if co.y<-.11:co.y+=.010*nose
                 mouth=math.exp(-((co.x/.029)**4+((co.z-1.422)/.014)**4))
                 if co.y<-.09:co.z+=(1.424-co.z)*.45*mouth
+                if blue and co.y<-.09:
+                    co.z+=.0025*mouth*min(1,abs(co.x)/.018)
             co.x*=1+.13*blend
             co.z+=.08*(co.z-1.40)*blend
+            if blue and (obj==hair or obj.name.startswith('Swept brown lock')):
+                co.x*=1.16
+                co.z=1.49+(co.z-1.49)*1.09
         obj.data.update()
     scene['design']='Original animation-style adult presenter; softly enlarged head, natural signing hands; CC0 base.'
     output.mkdir(parents=True)
     bpy.context.window.scene=scene;bpy.context.view_layer.update()
     bpy.ops.export_scene.gltf(filepath=str(output/'presenter-female.glb'),export_format='GLB',use_active_scene=True,export_animations=False,export_apply=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output/'presenter-female.blend'))
-    (output/'design.json').write_text(json.dumps({'renderStyle':'animation','base':'CC0 Innerscene/MakeHuman female','source':'https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5','changes':['Procedural weighted black jacket and trousers','White shirt and collar','Black bob hair','Animation-style head proportions, softer face, larger irises and eye highlights','Original signing hand proportions preserved'],'skeletonBones':len(rig.data.bones)},indent=2),encoding='utf8')
+    (output/'design.json').write_text(json.dumps({'renderStyle':('soft-3d' if blue else 'animation'),'profile':profile,'base':'CC0 Innerscene/MakeHuman female','source':'https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5','changes':(['Sky blue shirt, folded collar, placket and buttons','Short dark brown center-part hair with swept locks','Subtle resting smile'] if blue else ['Procedural weighted black jacket and trousers','White shirt and collar','Black bob hair'])+['Animation-style head proportions, softer face, larger irises and eye highlights','Original signing hand proportions preserved'],'skeletonBones':len(rig.data.bones)},indent=2),encoding='utf8')
 
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--model',required=True);p.add_argument('--output',required=True)
+    p.add_argument('--profile',choices=['business','blue-shirt'],default='business')
     args=p.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else None)
-    style(args.model,args.output)
+    style(args.model,args.output,args.profile)
