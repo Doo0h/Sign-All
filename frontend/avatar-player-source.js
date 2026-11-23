@@ -44,9 +44,21 @@ export async function mountAvatar(host, data) {
   pause.onclick=()=>{playing=false;status.textContent='일시정지';};
   restart.onclick=()=>{index=0;begin();finished=false;playing=true;status.textContent='처음부터 재생 중';};
   mixer.addEventListener('finished',()=>{if(index+1<clips.length){index++;begin();}else{playing=false;finished=true;status.textContent='재생 완료';}});
+  let timeline,timeLabel;
+  if(data.status==='draft-unreviewed'&&clips.length===1){
+    const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+    timeline=document.createElement('input');timeline.type='range';timeline.min='0';timeline.max=String(clips[0].duration);timeline.step='any';timeline.value='0';timeline.setAttribute('aria-label','동작 위치');timeline.style.cssText='flex:1;min-width:120px';
+    timeLabel=document.createElement('output');
+    const seek=t=>{playing=false;finished=false;begin();action.time=Math.max(0,Math.min(clips[0].duration,t));mixer.update(0);timeline.value=String(action.time);status.textContent='프레임 확인 중';data.onSeek?.(action.time);};
+    timeline.oninput=()=>seek(Number(timeline.value));
+    const back=button('이전 프레임'),next=button('다음 프레임');
+    const step=clips[0].duration/Math.max(1,(data.outputFrames||45)-1);
+    back.onclick=()=>seek(action.time-step);next.onclick=()=>seek(action.time+step);
+    row.append(timeline,timeLabel);host.insertBefore(row,status);
+  }
   const observer=new ResizeObserver(()=>{const w=Math.max(host.clientWidth,240),height=Math.min(520,Math.max(400,Math.round(w*.9)));renderer.setSize(w,height);camera.aspect=w/height;camera.updateProjectionMatrix();fitCamera();});observer.observe(host);
   const clock=new THREE.Clock();let disposed=false;
   const dispose=()=>{if(disposed)return;disposed=true;observer.disconnect();renderer.dispose();gltf.scene.traverse(o=>{o.geometry?.dispose();for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}});};
-  function frame(){if(!host.isConnected){dispose();return;}const delta=Math.min(clock.getDelta(),0.1);if(playing&&!document.hidden)mixer.update(delta*Number(speed.value));renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  function frame(){if(!host.isConnected||!canvas.isConnected){dispose();return;}const delta=Math.min(clock.getDelta(),0.1);if(playing&&!document.hidden)mixer.update(delta*Number(speed.value));if(timeline){timeline.value=String(action.time);timeLabel.textContent=action.time.toFixed(2)+' / '+clips[0].duration.toFixed(2)+'초';}renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
   status.textContent='준비되었습니다. 재생을 눌러 주세요.';
 }
