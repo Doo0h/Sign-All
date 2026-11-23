@@ -136,3 +136,9 @@ D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/style_presen
 `business`가 기존 기본값이며 `blue-shirt`는 하늘색 셔츠·칼라·단추·갈색 가르마 머리와 머리 볼륨을 생성합니다. 새 프로필은 툰 음영 대신 기본 입체 재질을 사용합니다. 생성 모델에 기존 retarget → refine → bake_face 순서를 적용합니다.
 
 현재 `blue-shirt-style-02` → `blue-shirt-motion-02` → `blue-shirt-refined-02` → `blue-shirt-face-02`를 생성했습니다. 8091 포트에서 새 캐릭터를, 8092 포트에서 기존 `presenter-avatar-11` 정장 캐릭터를 비교할 수 있습니다. 각 서버는 해당 모델의 보정 전 손동작을 `--comparison`으로 받습니다. 두 캐릭터 모두 미검수 시험 동작입니다.
+
+## 금발 올림머리 조형 시험
+
+`--profile blonde-updo`는 검은 정장, 흰 셔츠, 금발 번 헤어, 옆머리 컬과 큰 눈의 별도 프로필입니다. `blonde-updo-style-01` → `blonde-updo-motion-01` → `blonde-updo-refined-01` → `blonde-updo-face-01`을 생성했고 현재 8091의 로컬 검토 화면에 연결했습니다. 기존 모델과 자료는 보존했습니다.
+
+이 결과는 참고 이미지의 고품질 버츄얼 캐릭터를 재현한 완성 모델이 아닙니다. 절차적으로 만든 머리 메시와 기본 얼굴의 차이가 커서 조형 참고 시안으로만 취급합니다. 최종 캐릭터 외형 확정과 세밀한 얼굴·모발·의상 제작, 얼굴 변형 채널 확장은 별도 작업입니다. 이번 프로필도 실제 한국수어 문장 생성이나 표정 학습 완료를 의미하지 않습니다.

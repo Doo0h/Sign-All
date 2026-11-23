@@ -10,8 +10,9 @@ def style(model, output, profile='business'):
     import bpy
     from mathutils import Vector
     output = Path(output)
-    if profile not in ('business','blue-shirt'):raise ValueError('Unknown character profile')
+    if profile not in ('business','blue-shirt','blonde-updo'):raise ValueError('Unknown character profile')
     blue = profile=='blue-shirt'
+    updo = profile=='blonde-updo'
     if output.exists():
         raise ValueError('Choose a new output folder')
     scene=bpy.data.scenes.new('SignAll_business_presenter')
@@ -38,6 +39,9 @@ def style(model, output, profile='business'):
         hairmat=material('Dark brown parted hair',(.035,.022,.016),.65)
         collar_mat=material('Blue folded collar',(.28,.37,.57),.8)
     else:collar_mat=white
+    if updo:
+        hairmat=material('Honey blonde hair',(.47,.24,.073),.48)
+        iris=material('Hazel iris',(.16,.085,.025),.4)
     body.data.materials.clear();body.data.materials.append(skin);body.data.materials.append(lip);body.data.materials.append(black)
     for p in body.data.polygons:
         p.use_smooth=True
@@ -139,9 +143,9 @@ def style(model, output, profile='business'):
         for col in range(segments):
             angle=2*math.pi*col/segments
             a=(angle+math.pi)%(2*math.pi)-math.pi
-            fringe=1.525+.035*math.sin(a) if not blue else 1.51+.065*math.exp(-(a/.4)**2)
+            fringe=(1.55+.012*math.sin(a)) if updo else (1.525+.035*math.sin(a) if not blue else 1.51+.065*math.exp(-(a/.4)**2))
             blend=min(1,max(0,(abs(a)-.72)/.48));blend=blend*blend*(3-2*blend)
-            bottom=fringe*(1-blend)+(1.435 if blue else 1.365)*blend
+            bottom=fringe*(1-blend)+(1.48 if updo else (1.435 if blue else 1.365))*blend
             top=1.64 if blue else 1.615
             z=top+(bottom-top)*t
             radius=math.sqrt(max(0,1-((z-1.49)/(.151 if blue else .126))**2)) if z>=1.49 else 1-.12*(1.49-z)/.125
@@ -152,6 +156,46 @@ def style(model, output, profile='business'):
             faces.append((a,b,b+segments,a+segments))
     hair=mesh('Side-part black bob',vertices,faces,hairmat,'head')
     solid=hair.modifiers.new('Hair thickness','SOLIDIFY');solid.thickness=.004
+    if updo:
+        def hair_tube(name,points,radius,mat):
+            verts=[];faces=[];radial=10
+            for i,center in enumerate(points):
+                center=Vector(center)
+                tangent=(Vector(points[min(i+1,len(points)-1)])-Vector(points[max(0,i-1)])).normalized()
+                x=tangent.cross(Vector((0,1,0))).normalized()
+                if x.length<.5:x=tangent.cross(Vector((1,0,0))).normalized()
+                y=tangent.cross(x).normalized()
+                r=radius*(.30+.70*math.sin(math.pi*(i+.5)/len(points)))
+                for j in range(radial):
+                    a=2*math.pi*j/radial;verts.append(tuple(center+r*(math.cos(a)*x+math.sin(a)*y)))
+            for i in range(len(points)-1):
+                for j in range(radial):faces.append((i*radial+j,i*radial+(j+1)%radial,(i+1)*radial+(j+1)%radial,(i+1)*radial+j))
+            return mesh(name,verts,faces,mat,'head')
+        with bpy.context.temp_override(scene=scene,view_layer=scene.view_layers[0]):
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=40,ring_count=24,location=(0,.045,1.645))
+            bun=bpy.context.object;bun.name='Blonde gathered bun';bun.scale=(.065,.060,.066)
+            bpy.ops.object.transform_apply(location=True,rotation=True,scale=True)
+        bun.data.materials.append(hairmat);attach(bun,'head')
+        for p in bun.data.polygons:p.use_smooth=True
+        highlight=material('Golden hair ribbons',(.58,.34,.12),.55)
+        for k in range(9):
+            angle=2*math.pi*k/9;points=[]
+            for i in range(30):
+                t=i/29;a=angle+.8*t
+                points.append((.066*math.cos(a)*math.sin(math.pi*t),.045+.061*math.sin(a)*math.sin(math.pi*t),1.645+.067*math.cos(math.pi*t)))
+            hair_tube('Coiled bun strand',points,.006,highlight)
+        for side in (-1,1):
+            for layer in range(5):
+                points=[]
+                for i in range(30):
+                    t=i/29
+                    points.append((side*(.008+.09*math.sin(t*math.pi/2)),
+                        -.03-layer*.012-.083*math.sin(t*math.pi/2),1.615-layer*.003-.102*t*t))
+                hair_tube('Swept golden fringe',points,.009,hairmat if layer%2 else highlight)
+            points=[]
+            for i in range(45):
+                t=i/44;points.append((side*(.083+.011*math.sin(t*math.pi*3)), -.105-.018*math.sin(t*math.pi*2),1.525-.16*t))
+            hair_tube('Loose face framing curl',points,.0045,highlight)
     if blue:
         # Tapered overlapping locks give the center-part silhouette visible volume.
         for side in (-1,1):
@@ -208,6 +252,11 @@ def style(model, output, profile='business'):
                 if co.y<-.09:co.z+=(1.424-co.z)*.45*mouth
                 if blue and co.y<-.09:
                     co.z+=.0025*mouth*min(1,abs(co.x)/.018)
+            if updo and (obj in (body,eyes) or obj.name.startswith(('Iris','Pupil','Eye glint'))):
+                eye_x=.02845 if co.x>=0 else -.02845
+                eye_weight=math.exp(-(((co.x-eye_x)/.023)**4+((co.z-1.4902)/.018)**4)) if co.y<-.085 else 0
+                co.z+=(co.z-1.4902)*.28*eye_weight
+                co.x+=(co.x-eye_x)*.10*eye_weight
             co.x*=1+.13*blend
             co.z+=.08*(co.z-1.40)*blend
             if blue and (obj==hair or obj.name.startswith('Swept brown lock')):
@@ -219,11 +268,11 @@ def style(model, output, profile='business'):
     bpy.context.window.scene=scene;bpy.context.view_layer.update()
     bpy.ops.export_scene.gltf(filepath=str(output/'presenter-female.glb'),export_format='GLB',use_active_scene=True,export_animations=False,export_apply=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output/'presenter-female.blend'))
-    (output/'design.json').write_text(json.dumps({'renderStyle':('soft-3d' if blue else 'animation'),'profile':profile,'base':'CC0 Innerscene/MakeHuman female','source':'https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5','changes':(['Sky blue shirt, folded collar, placket and buttons','Short dark brown center-part hair with swept locks','Subtle resting smile'] if blue else ['Procedural weighted black jacket and trousers','White shirt and collar','Black bob hair'])+['Animation-style head proportions, softer face, larger irises and eye highlights','Original signing hand proportions preserved'],'skeletonBones':len(rig.data.bones)},indent=2),encoding='utf8')
+    (output/'design.json').write_text(json.dumps({'renderStyle':('soft-3d' if blue or updo else 'animation'),'profile':profile,'base':'CC0 Innerscene/MakeHuman female','source':'https://www.innerscene.com/tools/library/3d-parts/female-base-mesh-3d-person-rigged-a-pose-dba97ed5','changes':(['Sky blue shirt, folded collar, placket and buttons','Short dark brown center-part hair with swept locks','Subtle resting smile'] if blue else (['Honey blonde updo, gathered bun, swept fringe and loose curls','Black suit and white collared shirt','Larger stylized eyes with hazel irises'] if updo else ['Procedural weighted black jacket and trousers','White shirt and collar','Black bob hair']))+['Animation-style head proportions, softer face, larger irises and eye highlights','Original signing hand proportions preserved'],'skeletonBones':len(rig.data.bones)},indent=2),encoding='utf8')
 
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--model',required=True);p.add_argument('--output',required=True)
-    p.add_argument('--profile',choices=['business','blue-shirt'],default='business')
+    p.add_argument('--profile',choices=['business','blue-shirt','blonde-updo'],default='business')
     args=p.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else None)
     style(args.model,args.output,args.profile)
