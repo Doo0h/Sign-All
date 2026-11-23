@@ -4,7 +4,7 @@ import struct
 import tempfile
 import threading
 import unittest
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 from retarget_makehuman import assign_hands
 from avatar_review import create_server
@@ -45,7 +45,8 @@ class RetargetTests(unittest.TestCase):
             (root/'draft-operation.glb').write_bytes(struct.pack('<4sIII4s', b'glTF', 2, 20+len(chunk), len(chunk), b'JSON')+chunk)
             (root/'retarget-report.json').write_text(json.dumps({'status':'draft-unreviewed'}))
             (root/'player.js').write_text('')
-            server = create_server(root, root/'player.js', port=0)
+            (root/'clip.webm').write_bytes(b'0123456789')
+            server = create_server(root, root/'player.js', video=root/'clip.webm', port=0, comparison=root)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:
@@ -54,7 +55,20 @@ class RetargetTests(unittest.TestCase):
                     result = json.load(response)
                 self.assertEqual(result['status'], 'draft-unreviewed')
                 self.assertEqual(result['clips'], ['draft'])
-                for path in ['/../.env', '/manifest.json', '/source.webm']:
+                self.assertTrue(result['hasComparison'])
+                with urlopen(base+'/data.json?variant=original') as response:
+                    original=json.load(response)
+                self.assertEqual(original['assetUrl'],'/avatars/draft-original.glb')
+                with urlopen(base+original['assetUrl']) as response:
+                    self.assertEqual(response.read()[:4],b'glTF')
+                with urlopen(Request(base+'/source.webm',headers={'Range':'bytes=2-5'})) as response:
+                    self.assertEqual(response.status,206)
+                    self.assertEqual(response.read(),b'2345')
+                    self.assertEqual(response.headers['Content-Range'],'bytes 2-5/10')
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(Request(base+'/source.webm',headers={'Range':'bytes=50-'}))
+                self.assertEqual(error.exception.code,416)
+                for path in ['/../.env', '/manifest.json', '/clip.webm']:
                     with self.assertRaises(HTTPError) as error:
                         urlopen(base+path)
                     self.assertEqual(error.exception.code, 404)
