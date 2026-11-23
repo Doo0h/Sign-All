@@ -124,3 +124,15 @@ python tools/sign-motion/avatar_review.py --folder data/private/sign-motion/face
 - [MediaPipe 얼굴 데이터와 표정 계수](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker?tab=Python)
 - [VRM의 뼈대·표정·시선 기능](https://vrm.dev/en/vrm/vrm_features/)
 - [VRoid Studio 제작물 이용 가이드](https://vroid.com/en/studio/guidelines): 기본 제공 항목의 이용 조건과 타 제작자의 모델·의상별 조건을 구분해 확인합니다.
+
+## 하늘색 셔츠 캐릭터 참고 시안
+
+사용자가 제공한 갈색 가르마 머리·하늘색 셔츠 이미지의 의상과 머리 구성을 참고한 별도 시안입니다. 이미지에서 원본 3D 모델을 복원한 결과가 아니며 얼굴 형태와 모발 디테일은 참고 이미지보다 단순합니다. 기존 CC0 기본 메시와 163개 뼈대를 유지하므로 손·턱·고개·눈썹 연결을 재사용합니다. 기본 메시 출처도 변경하지 않습니다.
+
+```powershell
+D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/style_presenter.py --model data/private/sign-motion/sources/base-female.glb --output data/private/sign-motion/blue-shirt-style-new --profile blue-shirt
+```
+
+`business`가 기존 기본값이며 `blue-shirt`는 하늘색 셔츠·칼라·단추·갈색 가르마 머리와 머리 볼륨을 생성합니다. 새 프로필은 툰 음영 대신 기본 입체 재질을 사용합니다. 생성 모델에 기존 retarget → refine → bake_face 순서를 적용합니다.
+
+현재 `blue-shirt-style-02` → `blue-shirt-motion-02` → `blue-shirt-refined-02` → `blue-shirt-face-02`를 생성했습니다. 8091 포트에서 새 캐릭터를, 8092 포트에서 기존 `presenter-avatar-11` 정장 캐릭터를 비교할 수 있습니다. 각 서버는 해당 모델의 보정 전 손동작을 `--comparison`으로 받습니다. 두 캐릭터 모두 미검수 시험 동작입니다.
