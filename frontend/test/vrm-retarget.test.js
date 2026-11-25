@@ -1,7 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Quaternion,Vector3} from 'three';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment} from '../vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection} from '../vrm-retarget.js';
+
+test('finger stability reduces isolated jitter with a strict angular cap and preserved length',()=>{
+  const axis=new Vector3(1,0,0),jitter=new Vector3(1,.3,0).normalize().multiplyScalar(.02);
+  const filtered=stabilizeDirection(jitter,axis,axis);
+  assert.ok(filtered.angleTo(axis)<jitter.angleTo(axis));
+  assert.ok(filtered.angleTo(jitter)<=Math.PI/30+1e-7);
+  assert.ok(Math.abs(filtered.length()-.02)<1e-10);
+  assert.deepEqual(stabilizeDirection(axis,axis,axis).toArray(),axis.toArray());
+  assert.deepEqual(stabilizeDirection(axis,new Vector3(),axis).toArray(),axis.toArray());
+});
 
 test('finger aiming preserves inherited roll while following measured direction',()=>{
   const axis=new Vector3(1,0,0),roll=new Quaternion().setFromAxisAngle(axis,.7);
