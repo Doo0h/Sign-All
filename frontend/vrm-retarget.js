@@ -62,3 +62,12 @@ export function stabilizeDirection(current,previous,next,maxRadians=Math.PI/30){
   const rotation=new Quaternion().setFromUnitVectors(direction,average);
   return direction.applyQuaternion(new Quaternion().slerp(rotation,Math.min(1,maxRadians/angle))).multiplyScalar(length);
 }
+
+export function nearestTipPair(left,right){
+  let nearest=null;
+  for(const a of left)for(const b of right){
+    const distance=a.position.distanceTo(b.position);
+    if(Number.isFinite(distance)&&(!nearest||distance<nearest.distance))nearest={left:a.name,right:b.name,distance};
+  }
+  return nearest;
+}

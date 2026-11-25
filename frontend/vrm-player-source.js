@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection} from './vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -36,7 +36,7 @@ try{
     const end=raw?.children.find(child=>child.name.endsWith('_end'));
     if(end){
       const direction=end.getWorldPosition(new THREE.Vector3()).sub(raw.getWorldPosition(new THREE.Vector3()));
-      if(direction.lengthSq()>1e-10){fingertipDirections.set(name,direction);fingertipNodes.push({side,node:end});}
+      if(direction.lengthSq()>1e-10){fingertipDirections.set(name,direction);fingertipNodes.push({side,name:finger,node:end});}
     }
   }
   const tipMarkers=new THREE.Group();scene.add(tipMarkers);
@@ -46,6 +46,25 @@ try{
     marker.renderOrder=999;tipMarkers.add(marker);tip.marker=marker;
   }
   stage.dataset.fingertips=String(fingertipNodes.length);
+  let latestMeasurement=null;
+  const fingerLabels={Thumb:'엄지',Index:'검지',Middle:'중지',Ring:'약지',Little:'소지'};
+  function measureTips(){
+    if(mode!=='motion'){
+      latestMeasurement=null;
+      if($('tip-distance'))$('tip-distance').textContent='동작 프레임을 선택하면 양손 손끝 뼈 사이의 최소 거리를 표시합니다.';
+      return;
+    }
+    const points=side=>fingertipNodes.filter(t=>t.side===side).map(t=>({name:t.name,position:t.node.getWorldPosition(new THREE.Vector3())}));
+    const pair=nearestTipPair(points('left'),points('right'));
+    if(!pair)return;
+    const index=Number($('timeline').value);
+    const settings=Object.fromEntries(['position-correction','elbow-correction','correction','finger-correction','finger-stability'].map(id=>[id,Boolean($(id)?.checked)]));
+    latestMeasurement={frame:index,timestampMs:motion.frames[index].timestampMs,left:pair.left,right:pair.right,distanceMeters:pair.distance,settings};
+    if($('tip-distance')){
+      $('tip-distance').textContent=`왼손 ${fingerLabels[pair.left]} ↔ 오른손 ${fingerLabels[pair.right]}: ${(pair.distance*1000).toFixed(1)}mm (양손 손끝 중 최소 거리)`;
+      $('tip-distance').dataset.meters=String(pair.distance);
+    }
+  }
   const elbowHinges={};for(const side of ['left','right'])elbowHinges[side]=new THREE.Vector3(0,side==='left'?-1:1,0).applyQuaternion(vrm.humanoid.getRawBoneNode(side+'LowerArm').getWorldQuaternion(new THREE.Quaternion()));
   function positionCamera(){
     const close=$('view').value==='face',targetY=close?head.y+.06:hips.y+(head.y-hips.y)*.68;
@@ -82,7 +101,7 @@ try{
   }
   function saveReview(){
     const index=Number($('timeline').value),note=$('review-note').value.trim();
-    if(note)reviews[index]={timestampMs:motion.frames[index].timestampMs,kind:$('review-kind').value,note};else delete reviews[index];
+    if(note)reviews[index]={timestampMs:motion.frames[index].timestampMs,kind:$('review-kind').value,note,measurement:latestMeasurement?.frame===index?latestMeasurement:null};else delete reviews[index];
     try{localStorage.setItem(reviewKey,JSON.stringify(reviews));$('review-save-status').textContent='이 브라우저에 저장됨';}catch{$('review-save-status').textContent='브라우저 저장 실패 — JSON 내려받기로 보관하세요.';}
     $('review-frame').textContent=`${index}번 프레임 · ${motion.frames[index].timestampMs}ms · 기록 ${Object.keys(reviews).length}개`;
   }
@@ -91,7 +110,7 @@ try{
     $('review-note').onfocus=pauseReview;$('review-kind').onfocus=pauseReview;
     $('review-note').oninput=saveReview;$('review-kind').onchange=saveReview;
     $('review-export').onclick=()=>{
-      const report={schemaVersion:1,status:'draft-unreviewed',modelSha256:motion.modelSha256,sourceVideoSha256:motion.sourceVideoSha256,source:motion.source,frames:motion.frames.map(f=>f.timestampMs),reviews};
+      const report={schemaVersion:1,status:'draft-unreviewed',measurementMeaning:'model-bone-end-distance-not-skin-contact',currentFrameMeasurement:latestMeasurement,modelSha256:motion.modelSha256,sourceVideoSha256:motion.sourceVideoSha256,source:motion.source,frames:motion.frames.map(f=>f.timestampMs),reviews};
       const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
       const a=document.createElement('a');a.href=url;a.download='signall-vrm-review.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
     };
@@ -192,5 +211,5 @@ try{
   if($('finger-stability'))$('finger-stability').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
-  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);tipMarkers.visible=Boolean($('show-fingertips')?.checked);if(tipMarkers.visible)for(const tip of fingertipNodes)tip.marker.position.copy(tip.node.getWorldPosition(new THREE.Vector3()));if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);measureTips();tipMarkers.visible=Boolean($('show-fingertips')?.checked);if(tipMarkers.visible)for(const tip of fingertipNodes)tip.marker.position.copy(tip.node.getWorldPosition(new THREE.Vector3()));if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
 }catch(error){$('status').textContent=error.message;console.error(error);}

@@ -1,7 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Quaternion,Vector3} from 'three';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection} from '../vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair} from '../vrm-retarget.js';
+
+test('nearest fingertip pair measures cross-hand geometry without a contact threshold',()=>{
+  const left=[{name:'Index',position:new Vector3()},{name:'Thumb',position:new Vector3(5,0,0)}];
+  const right=[{name:'Middle',position:new Vector3(.03,.04,0)}];
+  assert.deepEqual(nearestTipPair(left,right),{left:'Index',right:'Middle',distance:.05});
+  assert.equal(nearestTipPair([],right),null);
+  assert.equal(nearestTipPair(left,[{name:'bad',position:new Vector3(NaN,0,0)}]),null);
+});
 
 test('finger stability reduces isolated jitter with a strict angular cap and preserved length',()=>{
   const axis=new Vector3(1,0,0),jitter=new Vector3(1,.3,0).normalize().multiplyScalar(.02);
