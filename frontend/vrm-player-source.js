@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
-import {distributeForearmRoll} from './vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -29,11 +29,16 @@ try{
     const node=bone(name);if(node)rest.set(name,{local:node.quaternion.clone(),world:node.getWorldQuaternion(new THREE.Quaternion()),position:node.getWorldPosition(new THREE.Vector3())});
   }
   const head=rest.get('head').position,hips=rest.get('hips').position;
-  function fit(){const width=stage.clientWidth,height=innerWidth<760?520:680;renderer.setSize(width,height);camera.aspect=width/height;
+  const elbowHinges={};for(const side of ['left','right'])elbowHinges[side]=new THREE.Vector3(0,side==='left'?-1:1,0).applyQuaternion(vrm.humanoid.getRawBoneNode(side+'LowerArm').getWorldQuaternion(new THREE.Quaternion()));
+  function positionCamera(){
     const close=$('view').value==='face',targetY=close?head.y+.06:hips.y+(head.y-hips.y)*.68;
-    const frameHeight=close?.48:.86,frameWidth=close?.42:.72;
+    const hands=$('view').value==='hands';
+    const left=bone('leftHand').getWorldPosition(new THREE.Vector3()),right=bone('rightHand').getWorldPosition(new THREE.Vector3());
+    const target=hands?left.clone().add(right).multiplyScalar(.5).add(new THREE.Vector3(0,.025,0)):new THREE.Vector3(0,targetY,0);
+    const frameHeight=hands?.42:(close?.48:.86),frameWidth=hands?Math.max(.48,Math.abs(left.x-right.x)+.30):(close?.42:.72);
     const distance=Math.max(frameHeight,frameWidth/camera.aspect)/(2*Math.tan(THREE.MathUtils.degToRad(15)));
-    camera.position.set(0,targetY,distance);camera.lookAt(0,targetY,0);camera.updateProjectionMatrix();}
+    camera.position.set(target.x,target.y,target.z+distance);camera.lookAt(target);camera.updateProjectionMatrix();}
+  function fit(){const width=stage.clientWidth,height=innerWidth<760?520:680;renderer.setSize(width,height);camera.aspect=width/height;positionCamera();}
   new ResizeObserver(fit).observe(stage);$('view').onchange=fit;fit();
   const restore=()=>{for(const [name,r] of rest)bone(name).quaternion.copy(r.local);vrm.scene.updateMatrixWorld(true);};
   const clearExpression=()=>{for(const name of ['happy','blink','blinkLeft','blinkRight','aa','oh','ou','ee','ih','relaxed','surprised'])vrm.expressionManager.setValue(name,0);};
@@ -46,6 +51,15 @@ try{
   function sample(index){restore();const f=motion.frames[index],pose=f.poseWorld.map(v);
     for(const [side,key,shoulder,elbow,wrist] of [['left','L',11,13,15],['right','R',12,14,16]]){
       aim(side+'UpperArm',side+'LowerArm',pose[elbow].clone().sub(pose[shoulder]));aim(side+'LowerArm',side+'Hand',pose[wrist].clone().sub(pose[elbow]));
+      if($('elbow-correction')?.checked){
+        const upper=pose[elbow].clone().sub(pose[shoulder]),lower=pose[wrist].clone().sub(pose[elbow]);
+        const start=rest.get(side+'UpperArm'),middle=rest.get(side+'LowerArm'),end=rest.get(side+'Hand');
+        const restDirection=middle.position.clone().sub(start.position);
+        const rotation=alignElbowPlane(restDirection,elbowHinges[side],upper,lower);
+        worldRotation(side+'UpperArm',rotation.clone().multiply(start.world));
+        const initial=end.position.clone().sub(middle.position).applyQuaternion(rotation).normalize();
+        worldRotation(side+'LowerArm',new THREE.Quaternion().setFromUnitVectors(initial,lower.normalize()).multiply(rotation).multiply(middle.world));
+      }
       const hand=f.hands[key].map(v),twist=palm(hand[0],hand[5],hand[9],hand[17]).multiply(palms[side].clone().invert());
       if($('correction')?.checked){
         const name=side+'LowerArm',r=rest.get(name),current=bone(name).getWorldQuaternion(new THREE.Quaternion());
@@ -77,7 +91,8 @@ try{
   if($('next-frame'))$('next-frame').onclick=()=>seekFrame(Number($('timeline').value)+1);
   $('source-face').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('correction'))$('correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
+  if($('elbow-correction'))$('elbow-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
-  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt);sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt);sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
 }catch(error){$('status').textContent=error.message;console.error(error);}
