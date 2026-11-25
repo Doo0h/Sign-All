@@ -2,7 +2,7 @@ FROM node:24-alpine AS assets
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY frontend/avatar-player-source.js frontend/vrm-player-source.js frontend/build-avatar.mjs ./
+COPY frontend/avatar-player-source.js frontend/vrm-player-source.js frontend/vrm-retarget.js frontend/build-avatar.mjs ./
 RUN node build-avatar.mjs
 FROM node:24-alpine
 WORKDIR /app

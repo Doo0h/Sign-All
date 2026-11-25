@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
+import {distributeForearmRoll} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -9,6 +10,7 @@ try{
   if(!asset.ok||!motionResponse.ok)throw Error('모델 또는 동작을 불러오지 못했습니다.');
   const bytes=await asset.arrayBuffer();if(bytes.byteLength>30*1024*1024)throw Error('모델 크기 제한을 초과했습니다.');
   const motion=await motionResponse.json();
+  if($('reference')){ $('reference').hidden=!motion.hasVideo;if(motion.hasVideo)$('reference-video').src='/source.webm'; }
   const manager=new THREE.LoadingManager();manager.setURLModifier(url=>{if(url.startsWith('blob:')||url.startsWith('data:image/'))return url;throw Error('외부 파일을 참조하는 모델은 지원하지 않습니다.');});
   const loader=new GLTFLoader(manager);loader.register(parser=>new VRMLoaderPlugin(parser));
   const gltf=await loader.parseAsync(bytes,'');const vrm=gltf.userData.vrm;
@@ -45,6 +47,13 @@ try{
     for(const [side,key,shoulder,elbow,wrist] of [['left','L',11,13,15],['right','R',12,14,16]]){
       aim(side+'UpperArm',side+'LowerArm',pose[elbow].clone().sub(pose[shoulder]));aim(side+'LowerArm',side+'Hand',pose[wrist].clone().sub(pose[elbow]));
       const hand=f.hands[key].map(v),twist=palm(hand[0],hand[5],hand[9],hand[17]).multiply(palms[side].clone().invert());
+      if($('correction')?.checked){
+        const name=side+'LowerArm',r=rest.get(name),current=bone(name).getWorldQuaternion(new THREE.Quaternion());
+        const swing=current.clone().multiply(r.world.clone().invert());
+        const normal=new THREE.Vector3(0,0,1).applyQuaternion(palms[side]);
+        const corrected=distributeForearmRoll(swing,pose[wrist].clone().sub(pose[elbow]),normal,normal.clone().applyQuaternion(twist));
+        worldRotation(name,corrected.multiply(r.world));
+      }
       worldRotation(side+'Hand',twist.clone().multiply(rest.get(side+'Hand').world));
       for(const [finger,start,joints] of [['Thumb',1,['Metacarpal','Proximal','Distal']],['Index',5,['Proximal','Intermediate','Distal']],['Middle',9,['Proximal','Intermediate','Distal']],['Ring',13,['Proximal','Intermediate','Distal']],['Little',17,['Proximal','Intermediate','Distal']]]){
         for(let j=0;j<3;j++){
@@ -62,8 +71,12 @@ try{
   $('play').onclick=()=>{mode='motion';if(position>=duration)position=0;playing=true;$('status').textContent='미검수 동작 재생 중';};
   $('pause').onclick=()=>{playing=false;$('status').textContent='일시정지';};
   $('reset').onclick=()=>{playing=false;mode='neutral';position=0;neutral();$('timeline').value='0';$('time').textContent='0 / 44 프레임';$('status').textContent='기본 자세';};
-  $('timeline').oninput=()=>{playing=false;mode='motion';const i=Number($('timeline').value);position=i/(motion.frames.length-1)*duration;sample(i);$('status').textContent='프레임 확인 중';};
+  const seekFrame=i=>{playing=false;mode='motion';i=Math.max(0,Math.min(motion.frames.length-1,i));position=i/(motion.frames.length-1)*duration;sample(i);const video=$('reference-video');if(video&&motion.hasVideo&&video.readyState>=1){video.pause();video.currentTime=motion.frames[i].timestampMs/1000;}$('status').textContent='프레임 확인 중';};
+  $('timeline').oninput=()=>seekFrame(Number($('timeline').value));
+  if($('previous-frame'))$('previous-frame').onclick=()=>seekFrame(Number($('timeline').value)-1);
+  if($('next-frame'))$('next-frame').onclick=()=>seekFrame(Number($('timeline').value)+1);
   $('source-face').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
+  if($('correction'))$('correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
   const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt);sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
