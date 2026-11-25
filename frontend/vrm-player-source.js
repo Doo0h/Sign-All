@@ -54,6 +54,32 @@ try{
   const sourceScale=scales[Math.floor(scales.length/2)];
   const shoulderCenter=rest.get('leftUpperArm').position.clone().add(rest.get('rightUpperArm').position).multiplyScalar(.5);
   let playing=false,position=0,mode='neutral';const duration=(motion.frames.at(-1).timestampMs-motion.frames[0].timestampMs)/1000;
+  const reviewKey='signall-vrm-review:'+motion.modelSha256+':'+motion.sourceVideoSha256+':'+motion.frames.map(f=>f.timestampMs).join(',');
+  let reviews={};
+  try{const saved=JSON.parse(localStorage.getItem(reviewKey)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))reviews=saved;}catch{}
+  function showReview(index){
+    if(!$('review-note'))return;
+    const row=reviews[index];$('review-note').value=typeof row?.note==='string'?row.note:'';
+    $('review-kind').value=['contact','direction','occlusion','other'].includes(row?.kind)?row.kind:'contact';
+    $('review-frame').textContent=`${index}번 프레임 · ${motion.frames[index].timestampMs}ms · 기록 ${Object.keys(reviews).length}개`;
+  }
+  function saveReview(){
+    const index=Number($('timeline').value),note=$('review-note').value.trim();
+    if(note)reviews[index]={timestampMs:motion.frames[index].timestampMs,kind:$('review-kind').value,note};else delete reviews[index];
+    try{localStorage.setItem(reviewKey,JSON.stringify(reviews));$('review-save-status').textContent='이 브라우저에 저장됨';}catch{$('review-save-status').textContent='브라우저 저장 실패 — JSON 내려받기로 보관하세요.';}
+    $('review-frame').textContent=`${index}번 프레임 · ${motion.frames[index].timestampMs}ms · 기록 ${Object.keys(reviews).length}개`;
+  }
+  if($('review-note')){
+    const pauseReview=()=>{playing=false;$('status').textContent='검토 기록 중';};
+    $('review-note').onfocus=pauseReview;$('review-kind').onfocus=pauseReview;
+    $('review-note').oninput=saveReview;$('review-kind').onchange=saveReview;
+    $('review-export').onclick=()=>{
+      const report={schemaVersion:1,status:'draft-unreviewed',modelSha256:motion.modelSha256,sourceVideoSha256:motion.sourceVideoSha256,source:motion.source,frames:motion.frames.map(f=>f.timestampMs),reviews};
+      const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+      const a=document.createElement('a');a.href=url;a.download='signall-vrm-review.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+    showReview(0);
+  }
   const referenceVideo=$('reference-video');let referenceTarget=motion.frames[0].timestampMs/1000;
   function syncReference(){
     if(!motion.hasVideo||!$('sync-video')?.checked||referenceVideo.readyState<1)return;
@@ -127,10 +153,11 @@ try{
     }
     clearExpression();if($('source-face').checked){const b=f.blendshapes;vrm.expressionManager.setValue('blinkLeft',b.eyeBlinkLeft||0);vrm.expressionManager.setValue('blinkRight',b.eyeBlinkRight||0);vrm.expressionManager.setValue('aa',b.jawOpen||0);}
     $('timeline').value=String(index);$('time').textContent=`${index} / ${motion.frames.length-1} 프레임`;
+    showReview(index);
   }
   $('play').onclick=()=>{mode='motion';if(position>=duration)position=0;playing=true;$('status').textContent='미검수 동작 재생 중';};
   $('pause').onclick=()=>{playing=false;$('status').textContent='일시정지';};
-  $('reset').onclick=()=>{playing=false;mode='neutral';position=0;neutral();$('timeline').value='0';$('time').textContent='0 / 44 프레임';$('status').textContent='기본 자세';};
+  $('reset').onclick=()=>{playing=false;mode='neutral';position=0;neutral();showReview(0);$('timeline').value='0';$('time').textContent='0 / 44 프레임';$('status').textContent='기본 자세';};
   const seekFrame=i=>{playing=false;mode='motion';i=Math.max(0,Math.min(motion.frames.length-1,i));position=i/(motion.frames.length-1)*duration;sample(i);const video=$('reference-video');if(video&&motion.hasVideo&&video.readyState>=1){video.pause();video.currentTime=motion.frames[i].timestampMs/1000;}$('status').textContent='프레임 확인 중';};
   $('timeline').oninput=()=>seekFrame(Number($('timeline').value));
   if($('previous-frame'))$('previous-frame').onclick=()=>seekFrame(Number($('timeline').value)-1);
