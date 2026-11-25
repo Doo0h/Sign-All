@@ -54,7 +54,24 @@ try{
   const sourceScale=scales[Math.floor(scales.length/2)];
   const shoulderCenter=rest.get('leftUpperArm').position.clone().add(rest.get('rightUpperArm').position).multiplyScalar(.5);
   let playing=false,position=0,mode='neutral';const duration=(motion.frames.at(-1).timestampMs-motion.frames[0].timestampMs)/1000;
+  const referenceVideo=$('reference-video');let referenceTarget=motion.frames[0].timestampMs/1000;
+  function syncReference(){
+    if(!motion.hasVideo||!$('sync-video')?.checked||referenceVideo.readyState<1)return;
+    referenceVideo.pause();
+    if(!referenceVideo.seeking&&Math.abs(referenceVideo.currentTime-referenceTarget)>.012)referenceVideo.currentTime=referenceTarget;
+  }
+  if(referenceVideo){
+    referenceVideo.addEventListener('seeked',syncReference);
+    referenceVideo.addEventListener('loadedmetadata',syncReference);
+    referenceVideo.addEventListener('play',()=>{if($('sync-video')?.checked)referenceVideo.pause();});
+  }
+  if($('sync-video')){
+    $('sync-video').disabled=!motion.hasVideo;
+    const update=()=>{referenceVideo.controls=!$('sync-video').checked;syncReference();};
+    $('sync-video').onchange=update;update();
+  }
   function sample(index){restore();const f=motion.frames[index],pose=f.poseWorld.map(v);
+    referenceTarget=f.timestampMs/1000;syncReference();
     const sourceCenter=pose[11].clone().add(pose[12]).multiplyScalar(.5);
     const desired={left:pose[15].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter),right:pose[16].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter)};
     const baseline={},applied={};let limited=0;
