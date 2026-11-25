@@ -49,3 +49,16 @@ export function aimFingerSegment(restDirection,targetDirection,parentDelta,restW
   const initial=restDirection.clone().applyQuaternion(parentDelta).normalize();
   return new Quaternion().setFromUnitVectors(initial,targetDirection.clone().normalize()).multiply(parentDelta).multiply(restWorld);
 }
+
+// Symmetric, frame-independent filtering: retain the current direction within 6 degrees.
+export function stabilizeDirection(current,previous,next,maxRadians=Math.PI/30){
+  const result=current.clone();
+  if([current,previous,next].some(v=>v.lengthSq()<1e-10))return result;
+  const length=result.length(),direction=result.clone().normalize();
+  const average=previous.clone().normalize().addScaledVector(direction,2).add(next.clone().normalize());
+  if(average.lengthSq()<1e-10)return result;
+  average.normalize();const angle=direction.angleTo(average);
+  if(angle<1e-8)return result;
+  const rotation=new Quaternion().setFromUnitVectors(direction,average);
+  return direction.applyQuaternion(new Quaternion().slerp(rotation,Math.min(1,maxRadians/angle))).multiplyScalar(length);
+}
