@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Quaternion,Vector3} from 'three';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings} from '../vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings,interpolateWristKeys} from '../vrm-retarget.js';
 
 test('nearest fingertip pair measures cross-hand geometry without a contact threshold',()=>{
   const left=[{name:'Index',position:new Vector3()},{name:'Thumb',position:new Vector3(5,0,0)}];
@@ -85,4 +85,14 @@ test('settings restore validates source, frames and every offset before returnin
     const bad=structuredClone(report);change(bad);assert.throws(()=>validateReviewSettings(bad,motion));
   }
   assert.throws(()=>validateReviewSettings(null,motion));
+});
+
+test('wrist keys preserve exact keys and zero endpoints with bounded interpolation',()=>{
+ const offsets={left:{x:20,y:-10,z:0},right:{x:0,y:0,z:0}},keys=[{frame:22,offsets}];
+ assert.deepEqual(interpolateWristKeys(keys,22,44),offsets);
+ assert.equal(interpolateWristKeys(keys,0,44).left.x,0);
+ assert.equal(interpolateWristKeys(keys,44,44).left.x,0);
+ assert.equal(interpolateWristKeys(keys,11,44).left.x,10);
+ for(let i=0;i<=44;i++)assert.ok(interpolateWristKeys(keys,i,44).left.x<=20);
+ assert.equal(interpolateWristKeys([],22,44).left.x,0);
 });

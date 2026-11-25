@@ -88,5 +88,27 @@ export function validateReviewSettings(report,motion){
     if(!Number.isInteger(value)||Math.abs(value)>20)throw Error('손 위치 값은 축별 -20~20mm 정수여야 합니다.');
     offsets[side][axis]=value;
   }
-  return {frame:row.frame,checked,offsets};
+  const keyframes=settings.wristKeyframes??[];
+  if(!Array.isArray(keyframes)||keyframes.length>motion.frames.length)throw Error('조정 지점 형식이 올바르지 않습니다.');
+  const seen=new Set();
+  for(const key of keyframes){
+    if(!Number.isInteger(key?.frame)||key.frame<0||key.frame>=motion.frames.length||seen.has(key.frame))throw Error('조정 지점 프레임이 올바르지 않습니다.');
+    seen.add(key.frame);
+    for(const side of ['left','right'])for(const axis of ['x','y','z']){
+      const value=key.offsets?.[side]?.[axis];
+      if(!Number.isFinite(value)||Math.abs(value)>20)throw Error('조정 지점은 축별 ±20mm 이내여야 합니다.');
+    }
+  }
+  return {frame:row.frame,checked,offsets,keyframes:structuredClone(keyframes)};
+}
+
+export function interpolateWristKeys(keys,frame,lastFrame){
+  const zero=()=>({left:{x:0,y:0,z:0},right:{x:0,y:0,z:0}});
+  const points=new Map([[0,zero()],[lastFrame,zero()]]);
+  for(const key of keys)points.set(key.frame,key.offsets);
+  const times=[...points.keys()].sort((a,b)=>a-b);
+  const lo=times.filter(t=>t<=frame).at(-1)??times[0],hi=times.find(t=>t>=frame)??times.at(-1);
+  const t=hi===lo?0:(frame-lo)/(hi-lo),weight=t*t*(3-2*t),result=zero();
+  for(const side of ['left','right'])for(const axis of ['x','y','z'])result[side][axis]=points.get(lo)[side][axis]*(1-weight)+points.get(hi)[side][axis]*weight;
+  return result;
 }

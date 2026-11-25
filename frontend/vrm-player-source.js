@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings} from './vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings,interpolateWristKeys} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -46,7 +46,7 @@ try{
     marker.renderOrder=999;tipMarkers.add(marker);tip.marker=marker;
   }
   stage.dataset.fingertips=String(fingertipNodes.length);
-  let latestMeasurement=null;
+  let latestMeasurement=null;let wristKeyframes=[];
   const readOffsets=()=>Object.fromEntries(['left','right'].map(side=>[side,Object.fromEntries(['x','y','z'].map(axis=>{
     const value=Number($(`offset-${side}-${axis}`)?.value||0);
     return [axis,Number.isFinite(value)?Math.max(-20,Math.min(20,value)):0];
@@ -63,7 +63,7 @@ try{
     if(!pair)return;
     const index=Number($('timeline').value);
     const settings=Object.fromEntries(['position-correction','elbow-correction','correction','finger-correction','finger-stability'].map(id=>[id,Boolean($(id)?.checked)]));
-    settings.wristOffsetMm=readOffsets();
+    settings.wristOffsetMm=readOffsets();settings.wristKeyframes=structuredClone(wristKeyframes);
     latestMeasurement={frame:index,timestampMs:motion.frames[index].timestampMs,left:pair.left,right:pair.right,distanceMeters:pair.distance,settings};
     if($('tip-distance')){
       $('tip-distance').textContent=`왼손 ${fingerLabels[pair.left]} ↔ 오른손 ${fingerLabels[pair.right]}: ${(pair.distance*1000).toFixed(1)}mm (양손 손끝 중 최소 거리)`;
@@ -138,10 +138,11 @@ try{
     $('sync-video').onchange=update;update();
   }
   function sample(index){restore();const f=motion.frames[index],pose=f.poseWorld.map(v);
+    if($('wrist-key-status'))$('wrist-key-status').textContent=`조정 지점: ${wristKeyframes.map(k=>k.frame).sort((a,b)=>a-b).join(', ')||'없음'} · 현재 ${index}번 프레임`;
     referenceTarget=f.timestampMs/1000;syncReference();
     const sourceCenter=pose[11].clone().add(pose[12]).multiplyScalar(.5);
     const desired={left:pose[15].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter),right:pose[16].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter)};
-    const offsets=readOffsets();
+    const offsets=readOffsets(),keyOffsets=interpolateWristKeys(wristKeyframes,index,motion.frames.length-1);for(const side of ['left','right'])for(const axis of ['x','y','z'])offsets[side][axis]=Math.max(-20,Math.min(20,offsets[side][axis]+keyOffsets[side][axis]));
     for(const side of ['left','right'])desired[side].add(new THREE.Vector3(offsets[side].x,offsets[side].y,offsets[side].z).multiplyScalar(.001));
     const baseline={},applied={};let limited=0;
     for(const [side,key,shoulder,elbow,wrist] of [['left','L',11,13,15],['right','R',12,14,16]]){
@@ -223,6 +224,15 @@ try{
     seekFrame(Number($('timeline').value));
   };
   updateOffsetControls();
+  if($('wrist-key-save'))$('wrist-key-save').onclick=()=>{
+    const frame=Number($('timeline').value),offsets=interpolateWristKeys(wristKeyframes,frame,motion.frames.length-1),delta=readOffsets();
+    for(const side of ['left','right'])for(const axis of ['x','y','z'])offsets[side][axis]=Math.max(-20,Math.min(20,offsets[side][axis]+delta[side][axis]));
+    wristKeyframes=wristKeyframes.filter(k=>k.frame!==frame).concat({frame,offsets});
+    $('offset-reset').click();
+  };
+  if($('wrist-key-delete'))$('wrist-key-delete').onclick=()=>{
+    const frame=Number($('timeline').value);wristKeyframes=wristKeyframes.filter(k=>k.frame!==frame);seekFrame(frame);
+  };
   if($('review-import'))$('review-import').onchange=async()=>{
     const input=$('review-import'),file=input.files?.[0];if(!file)return;
     try{
@@ -233,7 +243,7 @@ try{
         const id=`offset-${side}-${axis}`,value=restored.offsets[side][axis];
         $(id).value=String(value);$(id+'-value').textContent=value+'mm';
       }
-      updateOffsetControls();seekFrame(restored.frame);
+      wristKeyframes=restored.keyframes;updateOffsetControls();seekFrame(restored.frame);
       $('review-import-status').textContent='보정값과 선택 프레임을 복원했습니다. 기존 메모는 유지됩니다.';
     }catch(error){$('review-import-status').textContent='불러오기 실패: '+error.message;}
     finally{input.value='';}
