@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Quaternion,Vector3} from 'three';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair} from '../vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings} from '../vrm-retarget.js';
 
 test('nearest fingertip pair measures cross-hand geometry without a contact threshold',()=>{
   const left=[{name:'Index',position:new Vector3()},{name:'Thumb',position:new Vector3(5,0,0)}];
@@ -75,4 +75,14 @@ test('elbow plane alignment preserves the upper arm direction and aligns its hin
 test('straight elbow has finite stable orientation',()=>{
   const q=alignElbowPlane(new Vector3(1,0,0),new Vector3(0,-1,0),new Vector3(0,-1,0),new Vector3(0,-1,0));
   assert.ok(q.toArray().every(Number.isFinite));
+});
+
+test('settings restore validates source, frames and every offset before returning values',()=>{
+  const motion={modelSha256:'model',sourceVideoSha256:'video',frames:[{timestampMs:367}]};
+  const report={schemaVersion:1,modelSha256:'model',sourceVideoSha256:'video',frames:[367],currentFrameMeasurement:{frame:0,timestampMs:367,settings:{'position-correction':true,'elbow-correction':true,correction:false,'finger-correction':true,'finger-stability':true,wristOffsetMm:{left:{x:10,y:0,z:-20},right:{x:0,y:0,z:0}}}}};
+  assert.equal(validateReviewSettings(report,motion).offsets.left.x,10);
+  for(const change of [r=>r.modelSha256='other',r=>r.frames[0]=1,r=>r.currentFrameMeasurement.frame=2,r=>r.currentFrameMeasurement.settings.wristOffsetMm.left.x=21,r=>r.currentFrameMeasurement.settings.correction='true']){
+    const bad=structuredClone(report);change(bad);assert.throws(()=>validateReviewSettings(bad,motion));
+  }
+  assert.throws(()=>validateReviewSettings(null,motion));
 });

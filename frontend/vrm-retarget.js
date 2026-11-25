@@ -71,3 +71,22 @@ export function nearestTipPair(left,right){
   }
   return nearest;
 }
+
+export function validateReviewSettings(report,motion){
+  if(report?.schemaVersion!==1||report.modelSha256!==motion.modelSha256||report.sourceVideoSha256!==motion.sourceVideoSha256)throw Error('모델 또는 원본 영상이 다른 기록입니다.');
+  if(!Array.isArray(report.frames)||report.frames.length!==motion.frames.length||report.frames.some((t,i)=>t!==motion.frames[i].timestampMs))throw Error('프레임 구성이 다른 기록입니다.');
+  const row=report.currentFrameMeasurement,settings=row?.settings;
+  if(!Number.isInteger(row?.frame)||row.frame<0||row.frame>=motion.frames.length||row.timestampMs!==motion.frames[row.frame].timestampMs)throw Error('복원할 동작 프레임이 없습니다.');
+  const checked={};
+  for(const key of ['position-correction','elbow-correction','correction','finger-correction','finger-stability']){
+    if(typeof settings?.[key]!=='boolean')throw Error('보정 설정이 올바르지 않습니다.');
+    checked[key]=settings[key];
+  }
+  const offsets={left:{},right:{}};
+  for(const side of ['left','right'])for(const axis of ['x','y','z']){
+    const value=settings?.wristOffsetMm?.[side]?.[axis];
+    if(!Number.isInteger(value)||Math.abs(value)>20)throw Error('손 위치 값은 축별 -20~20mm 정수여야 합니다.');
+    offsets[side][axis]=value;
+  }
+  return {frame:row.frame,checked,offsets};
+}
