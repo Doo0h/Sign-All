@@ -39,3 +39,4 @@ backend/var/
 *.sqlite-wal
 
 frontend/avatar-player.js
+frontend/vrm-player.js
