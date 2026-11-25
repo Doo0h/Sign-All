@@ -13,3 +13,11 @@ export function distributeForearmRoll(swing,axis,restPalmNormal,targetPalmNormal
   const correction=Math.max(-maxRadians,Math.min(maxRadians,angle*weight));
   return new Quaternion().setFromAxisAngle(direction,correction).multiply(swing);
 }
+
+export function alignElbowPlane(restDirection,restHinge,upperDirection,lowerDirection){
+  const upper=upperDirection.clone().normalize(),lower=lowerDirection.clone().normalize();
+  const swing=new Quaternion().setFromUnitVectors(restDirection.clone().normalize(),upper);
+  const normal=new Vector3().crossVectors(upper,lower);
+  if(normal.lengthSq()<1e-6)return swing;
+  return distributeForearmRoll(swing,upper,restHinge,normal.normalize(),1,Math.PI);
+}
