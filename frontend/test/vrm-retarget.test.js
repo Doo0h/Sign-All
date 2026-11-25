@@ -1,7 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Quaternion,Vector3} from 'three';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget} from '../vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment} from '../vrm-retarget.js';
+
+test('finger aiming preserves inherited roll while following measured direction',()=>{
+  const axis=new Vector3(1,0,0),roll=new Quaternion().setFromAxisAngle(axis,.7);
+  const result=aimFingerSegment(axis,axis,roll,new Quaternion());
+  assert.ok(result.angleTo(roll)<1e-7);
+  const target=new Vector3(.2,.8,.3).normalize();
+  const aimed=aimFingerSegment(axis,target,roll,new Quaternion());
+  assert.ok(axis.clone().applyQuaternion(aimed).distanceTo(target)<1e-8);
+  assert.ok(aimFingerSegment(axis,new Vector3(),roll,new Quaternion()).toArray().every(Number.isFinite));
+});
 
 test('two-bone placement preserves lengths for reachable, unreachable and degenerate targets',()=>{
   const origin=new Vector3();
