@@ -1,7 +1,26 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Quaternion,Vector3} from 'three';
-import {distributeForearmRoll,alignElbowPlane} from '../vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget} from '../vrm-retarget.js';
+
+test('two-bone placement preserves lengths for reachable, unreachable and degenerate targets',()=>{
+  const origin=new Vector3();
+  for(const target of [new Vector3(.3,.2,.1),new Vector3(3,0,0),origin.clone()]){
+    const result=solveTwoBone(origin,target,origin,.3,.25);
+    assert.ok(Math.abs(result.elbow.length()-.3)<1e-8);
+    assert.ok(Math.abs(result.elbow.distanceTo(result.wrist)-.25)<1e-8);
+    assert.ok(result.elbow.toArray().every(Number.isFinite));
+    if(target.length()>.05&&target.length()<.55)assert.ok(result.wrist.distanceTo(target)<1e-8);
+    else assert.equal(result.clamped,true);
+  }
+  assert.throws(()=>solveTwoBone(origin,origin,origin,0,.3));
+});
+test('placement limits each wrist translation and leaves small corrections unchanged',()=>{
+  const origin=new Vector3();
+  assert.ok(Math.abs(boundedTarget(origin,new Vector3(1,0,0)).length()-.06)<1e-8);
+  assert.deepEqual(boundedTarget(origin,new Vector3(.01,0,0)).toArray(),[.01,0,0]);
+  assert.deepEqual(boundedTarget(origin,origin).toArray(),[0,0,0]);
+});
 
 test('forearm roll keeps arm direction and shares half the palm rotation',()=>{
   const axis=new Vector3(1,0,0),normal=new Vector3(0,0,1);
