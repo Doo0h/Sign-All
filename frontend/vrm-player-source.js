@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
-import {distributeForearmRoll,alignElbowPlane} from './vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -47,9 +47,27 @@ try{
   function aim(name,next,direction){if(direction.lengthSq()<1e-10)return;const a=rest.get(name),b=rest.get(next);if(!a||!b)return;const initial=b.position.clone().sub(a.position).normalize();worldRotation(name,new THREE.Quaternion().setFromUnitVectors(initial,direction.clone().normalize()).multiply(a.world));}
   function palm(wrist,index,middle,little){const y=middle.clone().sub(wrist).normalize(),x=index.clone().sub(little);x.addScaledVector(y,-x.dot(y)).normalize();const z=x.clone().cross(y).normalize();return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,y,z));}
   const palms={};for(const side of ['left','right'])palms[side]=palm(rest.get(side+'Hand').position,rest.get(side+'IndexProximal').position,rest.get(side+'MiddleProximal').position,rest.get(side+'LittleProximal').position);
+  const armLengths={};for(const side of ['left','right'])armLengths[side]=[
+    rest.get(side+'UpperArm').position.distanceTo(rest.get(side+'LowerArm').position),
+    rest.get(side+'LowerArm').position.distanceTo(rest.get(side+'Hand').position)];
+  const scales=motion.frames.map(f=>{const p=f.poseWorld.map(v);return (armLengths.left[0]+armLengths.left[1]+armLengths.right[0]+armLengths.right[1])/(p[11].distanceTo(p[13])+p[13].distanceTo(p[15])+p[12].distanceTo(p[14])+p[14].distanceTo(p[16]));}).filter(Number.isFinite).sort((a,b)=>a-b);
+  const sourceScale=scales[Math.floor(scales.length/2)];
+  const shoulderCenter=rest.get('leftUpperArm').position.clone().add(rest.get('rightUpperArm').position).multiplyScalar(.5);
   let playing=false,position=0,mode='neutral';const duration=(motion.frames.at(-1).timestampMs-motion.frames[0].timestampMs)/1000;
   function sample(index){restore();const f=motion.frames[index],pose=f.poseWorld.map(v);
+    const sourceCenter=pose[11].clone().add(pose[12]).multiplyScalar(.5);
+    const desired={left:pose[15].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter),right:pose[16].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter)};
+    const baseline={},applied={};let limited=0;
     for(const [side,key,shoulder,elbow,wrist] of [['left','L',11,13,15],['right','R',12,14,16]]){
+      const anchor=rest.get(side+'UpperArm').position;
+      const currentElbow=anchor.clone().add(pose[elbow].clone().sub(pose[shoulder]).normalize().multiplyScalar(armLengths[side][0]));
+      baseline[side]=currentElbow.clone().add(pose[wrist].clone().sub(pose[elbow]).normalize().multiplyScalar(armLengths[side][1]));
+      if($('position-correction')?.checked){
+        const target=boundedTarget(baseline[side],desired[side]);
+        const solved=solveTwoBone(anchor,target,currentElbow,...armLengths[side]);
+        if(solved.clamped||target.distanceTo(desired[side])>1e-5)limited++;
+        pose[shoulder]=anchor.clone();pose[elbow]=solved.elbow;pose[wrist]=solved.wrist;
+      }
       aim(side+'UpperArm',side+'LowerArm',pose[elbow].clone().sub(pose[shoulder]));aim(side+'LowerArm',side+'Hand',pose[wrist].clone().sub(pose[elbow]));
       if($('elbow-correction')?.checked){
         const upper=pose[elbow].clone().sub(pose[shoulder]),lower=pose[wrist].clone().sub(pose[elbow]);
@@ -78,6 +96,12 @@ try{
           worldRotation(name,new THREE.Quaternion().setFromUnitVectors(initial,target).multiply(twist.clone().multiply(r.world)));
         }
       }
+      applied[side]=bone(side+'Hand').getWorldPosition(new THREE.Vector3());
+    }
+    if($('placement-report')){
+      const goal=desired.left.distanceTo(desired.right),before=baseline.left.distanceTo(baseline.right),after=applied.left.distanceTo(applied.right);
+      $('placement-report').textContent=`손목 간격: 원본 비율 목표 ${Math.round(goal*1000)}mm · 보정 전 ${Math.round(before*1000)}mm · 현재 ${Math.round(after*1000)}mm${limited?' · 이동/도달 제한 적용':''}. 접촉 정확도 판정은 아닙니다.`;
+      $('placement-report').dataset.goal=String(goal);$('placement-report').dataset.before=String(before);$('placement-report').dataset.after=String(after);
     }
     clearExpression();if($('source-face').checked){const b=f.blendshapes;vrm.expressionManager.setValue('blinkLeft',b.eyeBlinkLeft||0);vrm.expressionManager.setValue('blinkRight',b.eyeBlinkRight||0);vrm.expressionManager.setValue('aa',b.jawOpen||0);}
     $('timeline').value=String(index);$('time').textContent=`${index} / ${motion.frames.length-1} 프레임`;
@@ -92,6 +116,7 @@ try{
   $('source-face').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('correction'))$('correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('elbow-correction'))$('elbow-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
+  if($('position-correction'))$('position-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
   const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt);sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
