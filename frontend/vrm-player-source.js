@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {GLTFExporter} from 'three/addons/exporters/GLTFExporter.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
 import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings,interpolateWristKeys} from './vrm-retarget.js';
 
@@ -94,7 +95,7 @@ try{
   const scales=motion.frames.map(f=>{const p=f.poseWorld.map(v);return (armLengths.left[0]+armLengths.left[1]+armLengths.right[0]+armLengths.right[1])/(p[11].distanceTo(p[13])+p[13].distanceTo(p[15])+p[12].distanceTo(p[14])+p[14].distanceTo(p[16]));}).filter(Number.isFinite).sort((a,b)=>a-b);
   const sourceScale=scales[Math.floor(scales.length/2)];
   const shoulderCenter=rest.get('leftUpperArm').position.clone().add(rest.get('rightUpperArm').position).multiplyScalar(.5);
-  let playing=false,position=0,mode='neutral';const duration=(motion.frames.at(-1).timestampMs-motion.frames[0].timestampMs)/1000;
+  let playing=false,position=0,mode='neutral',baking=false;const duration=(motion.frames.at(-1).timestampMs-motion.frames[0].timestampMs)/1000;
   const reviewKey='signall-vrm-review:'+motion.modelSha256+':'+motion.sourceVideoSha256+':'+motion.frames.map(f=>f.timestampMs).join(',');
   let reviews={};
   try{const saved=JSON.parse(localStorage.getItem(reviewKey)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))reviews=saved;}catch{}
@@ -224,6 +225,49 @@ try{
     seekFrame(Number($('timeline').value));
   };
   updateOffsetControls();
+  if($('motion-export'))$('motion-export').onclick=async()=>{
+    const selected=Number($('timeline').value),nodes=[],materials=[],userData=[],wristReference=[],converted=new Map();playing=false;baking=true;$('controls').disabled=true;$('motion-export').disabled=true;
+    if($('review-import'))$('review-import').disabled=true;
+    try{
+      $('status').textContent='보정 동작을 GLB로 생성 중…';
+      vrm.scene.traverse(node=>{if(node.isBone||node.morphTargetInfluences)nodes.push({node,quaternions:[],weights:[]});});
+      const times=motion.frames.map(f=>(f.timestampMs-motion.frames[0].timestampMs)/1000);
+      for(let i=0;i<motion.frames.length;i++){
+        sample(i);vrm.update(0);vrm.scene.updateMatrixWorld(true);wristReference.push(Object.fromEntries(['left','right'].map(side=>[side,vrm.humanoid.getRawBoneNode(side+'Hand').getWorldPosition(new THREE.Vector3()).toArray()])));
+        for(const row of nodes){
+          if(row.node.isBone)row.quaternions.push(...row.node.quaternion.toArray());
+          if(row.node.morphTargetInfluences)row.weights.push(...row.node.morphTargetInfluences);
+        }
+      }
+      const tracks=[];
+      for(const row of nodes){
+        if(row.quaternions.length)tracks.push(new THREE.QuaternionKeyframeTrack(row.node.uuid+'.quaternion',times,row.quaternions));
+        if(row.weights.length)tracks.push(new THREE.NumberKeyframeTrack(row.node.uuid+'.morphTargetInfluences',times,row.weights));
+      }
+      const clip=new THREE.AnimationClip('operation-draft',duration,tracks);
+      // Bake MToon appearance into portable textured PBR materials for standard GLB players.
+
+      const convert=material=>{
+        if(converted.has(material))return converted.get(material);
+        const value=new THREE.MeshStandardMaterial({name:material.name,color:material.color?.clone()||new THREE.Color(1,1,1),map:material.map||null,normalMap:material.normalMap||null,roughness:1,metalness:0,side:material.side,transparent:material.transparent,opacity:material.opacity,alphaTest:material.alphaTest});
+        converted.set(material,value);return value;
+      };
+      vrm.scene.traverse(node=>{
+        userData.push([node,node.userData]);node.userData={};
+        if(node.material){materials.push([node,node.material]);node.material=Array.isArray(node.material)?node.material.map(convert):convert(node.material);}
+      });
+      vrm.scene.userData={status:'draft-unreviewed',word:'운영',language:'ksl',modelSha256:motion.modelSha256,sourceVideoSha256:motion.sourceVideoSha256,source:motion.source,modelCredit:'© 2022 pixiv Inc. VRM1_Constraint_Twist_Sample v1.0.1',modelLicense:'https://vrm.dev/en/licenses/1.0/',videoCredit:'한국저작권위원회 · 일상생활_수어_사회생활_운영 · CC BY 4.0',timestampsMs:motion.frames.map(f=>f.timestampMs),wristReference,settings:{wristOffsetMm:readOffsets(),wristKeyframes,corrections:Object.fromEntries(['position-correction','elbow-correction','correction','finger-correction','finger-stability','source-face'].map(id=>[id,Boolean($(id)?.checked)]))}};
+      const bytes=await new GLTFExporter().parseAsync(vrm.scene,{binary:true,animations:[clip],onlyVisible:false});
+      const url=URL.createObjectURL(new Blob([bytes],{type:'model/gltf-binary'}));const a=document.createElement('a');a.href=url;a.download='operation-draft.glb';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      $('motion-export-status').textContent=`45프레임 동작 파일 생성 완료 (${(bytes.byteLength/1024/1024).toFixed(1)}MB). 수어 의미 미검수 초안입니다.`;
+
+    }catch(error){$('motion-export-status').textContent='동작 파일 생성 실패: '+error.message;}
+    finally{
+      for(const [node,material] of materials)node.material=material;
+      for(const [node,data] of userData)node.userData=data;for(const material of converted.values())material.dispose();
+      baking=false;$('controls').disabled=false;$('motion-export').disabled=false;if($('review-import'))$('review-import').disabled=false;seekFrame(selected);
+    }
+  };
   if($('wrist-key-save'))$('wrist-key-save').onclick=()=>{
     const frame=Number($('timeline').value),offsets=interpolateWristKeys(wristKeyframes,frame,motion.frames.length-1),delta=readOffsets();
     for(const side of ['left','right'])for(const axis of ['x','y','z'])offsets[side][axis]=Math.max(-20,Math.min(20,offsets[side][axis]+delta[side][axis]));
@@ -252,5 +296,5 @@ try{
   if($('finger-stability'))$('finger-stability').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
-  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);measureTips();tipMarkers.visible=Boolean($('show-fingertips')?.checked);if(tipMarkers.visible)for(const tip of fingertipNodes)tip.marker.position.copy(tip.node.getWorldPosition(new THREE.Vector3()));if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  const clock=new THREE.Clock();function frame(){if(baking){requestAnimationFrame(frame);return;}const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);measureTips();tipMarkers.visible=Boolean($('show-fingertips')?.checked);if(tipMarkers.visible)for(const tip of fingertipNodes)tip.marker.position.copy(tip.node.getWorldPosition(new THREE.Vector3()));if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
 }catch(error){$('status').textContent=error.message;console.error(error);}
