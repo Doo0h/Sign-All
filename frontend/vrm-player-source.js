@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair} from './vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment,stabilizeDirection,nearestTipPair,validateReviewSettings} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -223,6 +223,21 @@ try{
     seekFrame(Number($('timeline').value));
   };
   updateOffsetControls();
+  if($('review-import'))$('review-import').onchange=async()=>{
+    const input=$('review-import'),file=input.files?.[0];if(!file)return;
+    try{
+      if(file.size>512*1024)throw Error('512KB 이하의 검토 JSON을 선택하세요.');
+      const restored=validateReviewSettings(JSON.parse(await file.text()),motion);
+      for(const [id,checked] of Object.entries(restored.checked))$(id).checked=checked;
+      for(const side of ['left','right'])for(const axis of ['x','y','z']){
+        const id=`offset-${side}-${axis}`,value=restored.offsets[side][axis];
+        $(id).value=String(value);$(id+'-value').textContent=value+'mm';
+      }
+      updateOffsetControls();seekFrame(restored.frame);
+      $('review-import-status').textContent='보정값과 선택 프레임을 복원했습니다. 기존 메모는 유지됩니다.';
+    }catch(error){$('review-import-status').textContent='불러오기 실패: '+error.message;}
+    finally{input.value='';}
+  };
   if($('finger-correction'))$('finger-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('finger-stability'))$('finger-stability').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
