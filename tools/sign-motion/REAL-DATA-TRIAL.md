@@ -136,3 +136,29 @@ D:/SignAll/blender-tools/.venv/Scripts/python.exe tools/sign-motion/style_presen
 `business`가 기존 기본값이며 `blue-shirt`는 하늘색 셔츠·칼라·단추·갈색 가르마 머리와 머리 볼륨을 생성합니다. 새 프로필은 툰 음영 대신 기본 입체 재질을 사용합니다. 생성 모델에 기존 retarget → refine → bake_face 순서를 적용합니다.
 
 현재 `blue-shirt-style-02` → `blue-shirt-motion-02` → `blue-shirt-refined-02` → `blue-shirt-face-02`를 생성했습니다. 8091 포트에서 새 캐릭터를, 8092 포트에서 기존 `presenter-avatar-11` 정장 캐릭터를 비교할 수 있습니다. 각 서버는 해당 모델의 보정 전 손동작을 `--comparison`으로 받습니다. 두 캐릭터 모두 미검수 시험 동작입니다.
+
+## 금발 올림머리 조형 시험
+
+`--profile blonde-updo`는 검은 정장, 흰 셔츠, 금발 번 헤어, 옆머리 컬과 큰 눈의 별도 프로필입니다. `blonde-updo-style-01` → `blonde-updo-motion-01` → `blonde-updo-refined-01` → `blonde-updo-face-01`을 생성했고 현재 8091의 로컬 검토 화면에 연결했습니다. 기존 모델과 자료는 보존했습니다.
+
+이 결과는 참고 이미지의 고품질 버츄얼 캐릭터를 재현한 완성 모델이 아닙니다. 절차적으로 만든 머리 메시와 기본 얼굴의 차이가 커서 조형 참고 시안으로만 취급합니다. 최종 캐릭터 외형 확정과 세밀한 얼굴·모발·의상 제작, 얼굴 변형 채널 확장은 별도 작업입니다. 이번 프로필도 실제 한국수어 문장 생성이나 표정 학습 완료를 의미하지 않습니다.
+
+## 실제 VRM 캐릭터 교체 (2026-11-25)
+
+현재 8091 미리보기는 이전 절차적 모델 대신 pixiv의 완성형 `VRM1_Constraint_Twist_Sample` v1.0.1을 사용합니다. 갈색 긴 머리, 눈·얼굴 텍스처, MToon 재질, 표정 프리셋, 손가락 뼈대가 포함되어 있습니다. 사용자가 보낸 이미지와 동일한 캐릭터는 아닙니다.
+
+- [공식 배포 저장소](https://github.com/pixiv/three-vrm/tree/release/packages/three-vrm/examples/models)
+- [모델별 이용 조건](https://github.com/vrm-c/vrm-specification/tree/master/samples/VRM1_Constraint_Twist_Sample)
+- [VRM Public License 1.0](https://vrm.dev/en/licenses/1.0/), © 2022 pixiv Inc.
+- 파일 SHA-256: `12c2b97e95e700783a6a550dc0eee2d7880aeedccef9ae67bc4c5a2f0f2631a2`
+
+파일에 포함된 설정: `avatarPermission=everyone`, `commercialUsage=corporation`, `allowRedistribution=true`, `modification=allowModificationRedistribution`, `creditNotation=unnecessary`. 반사회적·혐오 표현은 금지됩니다. 화면에는 출처와 라이선스를 유지하며, 모델 외형은 수정하지 않고 런타임에서 동작을 연결합니다. 라이브러리의 MIT 라이선스와 모델의 이용 조건을 구분합니다. 모델 파일은 `data/private/sign-motion/vrm-sample/avatar.vrm`에 보관하고 Git에 포함하지 않습니다.
+
+```powershell
+# frontend에서 npm ci --ignore-scripts 및 npm run build 실행 후
+python tools/sign-motion/vrm_review.py --model data/private/sign-motion/vrm-sample/avatar.vrm --motion data/private/sign-motion/operation-take-01/motion.json --player frontend/vrm-player.js
+```
+
+`@pixiv/three-vrm` 3.5.5로 모델 고유의 텍스처·표정·머리카락 처리를 유지합니다. 상반신/얼굴 확대, 미소/눈 감기/입 벌리기, 프레임 이동과 동작 재생을 제공합니다. 원본 영상의 blinkLeft/blinkRight와 jawOpen을 VRM 표현에 연결했습니다. 감정 버튼은 얼굴 기능 시험용이며 수어 비수지 표현으로 검수된 것이 아닙니다.
+
+손·팔은 원본 랜드마크를 VRM 정규화 뼈대에 별도로 대응시킨 초안입니다. 이전 MakeHuman 회전을 그대로 복사하지 않습니다. 손목 축·팔 비틀림·의상 관통과 접촉은 추가 보정이 필요합니다. 새 학습 모델이나 질문 전체 번역 결과가 아니며 일반 면접 서비스의 검토 완료 목록에 등록하지 않습니다.
