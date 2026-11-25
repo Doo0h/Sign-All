@@ -29,6 +29,23 @@ try{
     const node=bone(name);if(node)rest.set(name,{local:node.quaternion.clone(),world:node.getWorldQuaternion(new THREE.Quaternion()),position:node.getWorldPosition(new THREE.Vector3())});
   }
   const head=rest.get('head').position,hips=rest.get('hips').position;
+  // This pinned VRM supplies explicit *_end nodes outside normalizedHumanBones.
+  const fingertipDirections=new Map(),fingertipNodes=[];
+  for(const side of ['left','right'])for(const finger of ['Thumb','Index','Middle','Ring','Little']){
+    const name=side+finger+'Distal',raw=vrm.humanoid.getRawBoneNode(name);
+    const end=raw?.children.find(child=>child.name.endsWith('_end'));
+    if(end){
+      const direction=end.getWorldPosition(new THREE.Vector3()).sub(raw.getWorldPosition(new THREE.Vector3()));
+      if(direction.lengthSq()>1e-10){fingertipDirections.set(name,direction);fingertipNodes.push({side,node:end});}
+    }
+  }
+  const tipMarkers=new THREE.Group();scene.add(tipMarkers);
+  const tipGeometry=new THREE.SphereGeometry(.003,8,6);
+  for(const tip of fingertipNodes){
+    const marker=new THREE.Mesh(tipGeometry,new THREE.MeshBasicMaterial({color:tip.side==='left'?0x66e5ff:0xffbf66,depthTest:false,depthWrite:false,transparent:true}));
+    marker.renderOrder=999;tipMarkers.add(marker);tip.marker=marker;
+  }
+  stage.dataset.fingertips=String(fingertipNodes.length);
   const elbowHinges={};for(const side of ['left','right'])elbowHinges[side]=new THREE.Vector3(0,side==='left'?-1:1,0).applyQuaternion(vrm.humanoid.getRawBoneNode(side+'LowerArm').getWorldQuaternion(new THREE.Quaternion()));
   function positionCamera(){
     const close=$('view').value==='face',targetY=close?head.y+.06:hips.y+(head.y-hips.y)*.68;
@@ -134,7 +151,8 @@ try{
         for(let j=0;j<3;j++){
           const name=side+finger+joints[j],r=rest.get(name);if(!r)continue;
           const next=rest.get(side+finger+joints[Math.min(j+1,2)]),prev=rest.get(side+finger+joints[Math.max(j-1,0)]);
-          const dir=j<2?next.position.clone().sub(r.position):r.position.clone().sub(prev.position);
+          const dir=j<2?next.position.clone().sub(r.position):(fingertipDirections.get(name)?.clone()||r.position.clone().sub(prev.position));
+          const restDirection=dir.clone();
           const initial=dir.applyQuaternion(twist).normalize();
           let target=hand[start+j+1].clone().sub(hand[start+j]).normalize();
           if($('finger-stability')?.checked&&index>0&&index<motion.frames.length-1){
@@ -144,7 +162,6 @@ try{
           if($('finger-correction')?.checked&&j>0){
             const parentName=side+finger+joints[j-1];
             const parentDelta=bone(parentName).getWorldQuaternion(new THREE.Quaternion()).multiply(rest.get(parentName).world.clone().invert());
-            const restDirection=j<2?next.position.clone().sub(r.position):r.position.clone().sub(prev.position);
             worldRotation(name,aimFingerSegment(restDirection,target,parentDelta,r.world));
           }else worldRotation(name,new THREE.Quaternion().setFromUnitVectors(initial,target).multiply(twist.clone().multiply(r.world)));
         }
@@ -175,5 +192,5 @@ try{
   if($('finger-stability'))$('finger-stability').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
-  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);tipMarkers.visible=Boolean($('show-fingertips')?.checked);if(tipMarkers.visible)for(const tip of fingertipNodes)tip.marker.position.copy(tip.node.getWorldPosition(new THREE.Vector3()));if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
 }catch(error){$('status').textContent=error.message;console.error(error);}
