@@ -47,6 +47,10 @@ try{
   }
   stage.dataset.fingertips=String(fingertipNodes.length);
   let latestMeasurement=null;
+  const readOffsets=()=>Object.fromEntries(['left','right'].map(side=>[side,Object.fromEntries(['x','y','z'].map(axis=>{
+    const value=Number($(`offset-${side}-${axis}`)?.value||0);
+    return [axis,Number.isFinite(value)?Math.max(-20,Math.min(20,value)):0];
+  }))]));
   const fingerLabels={Thumb:'엄지',Index:'검지',Middle:'중지',Ring:'약지',Little:'소지'};
   function measureTips(){
     if(mode!=='motion'){
@@ -59,6 +63,7 @@ try{
     if(!pair)return;
     const index=Number($('timeline').value);
     const settings=Object.fromEntries(['position-correction','elbow-correction','correction','finger-correction','finger-stability'].map(id=>[id,Boolean($(id)?.checked)]));
+    settings.wristOffsetMm=readOffsets();
     latestMeasurement={frame:index,timestampMs:motion.frames[index].timestampMs,left:pair.left,right:pair.right,distanceMeters:pair.distance,settings};
     if($('tip-distance')){
       $('tip-distance').textContent=`왼손 ${fingerLabels[pair.left]} ↔ 오른손 ${fingerLabels[pair.right]}: ${(pair.distance*1000).toFixed(1)}mm (양손 손끝 중 최소 거리)`;
@@ -136,6 +141,8 @@ try{
     referenceTarget=f.timestampMs/1000;syncReference();
     const sourceCenter=pose[11].clone().add(pose[12]).multiplyScalar(.5);
     const desired={left:pose[15].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter),right:pose[16].clone().sub(sourceCenter).multiplyScalar(sourceScale).add(shoulderCenter)};
+    const offsets=readOffsets();
+    for(const side of ['left','right'])desired[side].add(new THREE.Vector3(offsets[side].x,offsets[side].y,offsets[side].z).multiplyScalar(.001));
     const baseline={},applied={};let limited=0;
     for(const [side,key,shoulder,elbow,wrist] of [['left','L',11,13,15],['right','R',12,14,16]]){
       const anchor=rest.get(side+'UpperArm').position;
@@ -189,7 +196,7 @@ try{
     }
     if($('placement-report')){
       const goal=desired.left.distanceTo(desired.right),before=baseline.left.distanceTo(baseline.right),after=applied.left.distanceTo(applied.right);
-      $('placement-report').textContent=`손목 간격: 원본 비율 목표 ${Math.round(goal*1000)}mm · 보정 전 ${Math.round(before*1000)}mm · 현재 ${Math.round(after*1000)}mm${limited?' · 이동/도달 제한 적용':''}. 접촉 정확도 판정은 아닙니다.`;
+      $('placement-report').textContent=`손목 간격: 위치 보정 목표 ${Math.round(goal*1000)}mm · 보정 전 ${Math.round(before*1000)}mm · 현재 ${Math.round(after*1000)}mm${limited?' · 이동/도달 제한 적용':''}. 접촉 정확도 판정은 아닙니다.`;
       $('placement-report').dataset.goal=String(goal);$('placement-report').dataset.before=String(before);$('placement-report').dataset.after=String(after);
     }
     clearExpression();if($('source-face').checked){const b=f.blendshapes;vrm.expressionManager.setValue('blinkLeft',b.eyeBlinkLeft||0);vrm.expressionManager.setValue('blinkRight',b.eyeBlinkRight||0);vrm.expressionManager.setValue('aa',b.jawOpen||0);}
@@ -206,7 +213,16 @@ try{
   $('source-face').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('correction'))$('correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('elbow-correction'))$('elbow-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
-  if($('position-correction'))$('position-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
+  const updateOffsetControls=()=>{if($('wrist-offsets'))$('wrist-offsets').disabled=!$('position-correction')?.checked;};
+  if($('position-correction'))$('position-correction').onchange=()=>{updateOffsetControls();if(mode==='motion')sample(Number($('timeline').value));};
+  for(const input of document.querySelectorAll('[data-wrist-offset]'))input.oninput=()=>{
+    $(input.id+'-value').textContent=input.value+'mm';seekFrame(Number($('timeline').value));
+  };
+  if($('offset-reset'))$('offset-reset').onclick=()=>{
+    for(const input of document.querySelectorAll('[data-wrist-offset]')){input.value='0';$(input.id+'-value').textContent='0mm';}
+    seekFrame(Number($('timeline').value));
+  };
+  updateOffsetControls();
   if($('finger-correction'))$('finger-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('finger-stability'))$('finger-stability').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
