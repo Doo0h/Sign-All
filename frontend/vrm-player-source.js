@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {VRMLoaderPlugin,VRMUtils} from '@pixiv/three-vrm';
-import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget} from './vrm-retarget.js';
+import {distributeForearmRoll,alignElbowPlane,solveTwoBone,boundedTarget,aimFingerSegment} from './vrm-retarget.js';
 
 const $=id=>document.getElementById(id);
 const v=point=>new THREE.Vector3(point.x,-point.y,-point.z);
@@ -93,7 +93,12 @@ try{
           const next=rest.get(side+finger+joints[Math.min(j+1,2)]),prev=rest.get(side+finger+joints[Math.max(j-1,0)]);
           const dir=j<2?next.position.clone().sub(r.position):r.position.clone().sub(prev.position);
           const initial=dir.applyQuaternion(twist).normalize(),target=hand[start+j+1].clone().sub(hand[start+j]).normalize();
-          worldRotation(name,new THREE.Quaternion().setFromUnitVectors(initial,target).multiply(twist.clone().multiply(r.world)));
+          if($('finger-correction')?.checked&&j>0){
+            const parentName=side+finger+joints[j-1];
+            const parentDelta=bone(parentName).getWorldQuaternion(new THREE.Quaternion()).multiply(rest.get(parentName).world.clone().invert());
+            const restDirection=j<2?next.position.clone().sub(r.position):r.position.clone().sub(prev.position);
+            worldRotation(name,aimFingerSegment(restDirection,target,parentDelta,r.world));
+          }else worldRotation(name,new THREE.Quaternion().setFromUnitVectors(initial,target).multiply(twist.clone().multiply(r.world)));
         }
       }
       applied[side]=bone(side+'Hand').getWorldPosition(new THREE.Vector3());
@@ -117,7 +122,8 @@ try{
   if($('correction'))$('correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('elbow-correction'))$('elbow-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   if($('position-correction'))$('position-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
+  if($('finger-correction'))$('finger-correction').onchange=()=>{if(mode==='motion')sample(Number($('timeline').value));};
   for(const button of document.querySelectorAll('[data-expression]'))button.onclick=()=>{playing=false;mode='expression';neutral();const name=button.dataset.expression;if(name!=='neutral')vrm.expressionManager.setValue(name,1);$('status').textContent=button.textContent+' 표정';};
   neutral();$('controls').disabled=false;$('status').textContent='VRM 아바타 준비 완료';
-  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt);sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
+  const clock=new THREE.Clock();function frame(){const dt=Math.min(clock.getDelta(),.05);if(playing&&!document.hidden){position=Math.min(duration,position+dt*Number($('speed')?.value||1));sample(Math.round(position/duration*(motion.frames.length-1)));if(position>=duration){playing=false;$('status').textContent='재생 완료';}}vrm.update(dt);if($('view').value==='hands')positionCamera();renderer.render(scene,camera);requestAnimationFrame(frame);}frame();
 }catch(error){$('status').textContent=error.message;console.error(error);}

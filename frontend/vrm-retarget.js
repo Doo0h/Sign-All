@@ -42,3 +42,10 @@ export function boundedTarget(current,target,maxDistance=.06){
   const delta=target.clone().sub(current),distance=delta.length();
   return current.clone().add(delta.multiplyScalar(distance>maxDistance?maxDistance/distance:1));
 }
+
+// Carry the preceding phalanx's roll into the next joint before aiming it.
+export function aimFingerSegment(restDirection,targetDirection,parentDelta,restWorld){
+  if(restDirection.lengthSq()<1e-10||targetDirection.lengthSq()<1e-10)return parentDelta.clone().multiply(restWorld);
+  const initial=restDirection.clone().applyQuaternion(parentDelta).normalize();
+  return new Quaternion().setFromUnitVectors(initial,targetDirection.clone().normalize()).multiply(parentDelta).multiply(restWorld);
+}
